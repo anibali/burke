@@ -7,7 +7,7 @@ desc "Build gems for all targets"
 task :gems
 
 module Burke
-  VERSION = File.read('VERSION')
+  VERSION = '0.1.0'
   
   class << self
     def base_spec
