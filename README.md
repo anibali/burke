@@ -21,7 +21,9 @@ Example
 
 Here is a sample Rakefile using Burke.
 
+    require 'rubygems'
     require 'burke'
+    require 'fileutils'
     
     # Define the base Gem specification
     Burke.base_spec do |s|
