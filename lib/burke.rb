@@ -41,6 +41,15 @@ module Burke
         puts "Couldn't load RSpec: running of RSpec examples is disabled"
       end
     end
+    
+    def rcov_verify_task *args, &block
+      begin
+        require 'spec/rake/verify_rcov'
+        RCov::VerifyTask.new *args, &block
+      rescue LoadError
+        puts "Couldn't load RSpec and RCov: verification of code coverage with RCov is disabled"
+      end
+    end
   end
   
   module Rake
