@@ -47,7 +47,7 @@ Here is a sample Rakefile using Burke.
       t.extend_spec do |s|
         s.add_dependency 'ffi'
         
-        s.files += 'lib/libfoo.so'
+        s.files += ['lib/libfoo.so']
       end
       
       t.after do
