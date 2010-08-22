@@ -1,14 +1,12 @@
 Burke
 =====
 
-![Don Burke](http://i.imgur.com/5PFaw.jpg)
-
 Synopsis
 --------
 
 Burke provides a bunch of helpers to make creating Rake files a little more
 pleasant. It is named after Don Burke, host of an Australian gardening and
-home improvement show named "Burke's Backyard".
+home improvement show named [Burke's Backyard]("http://www.burkesbackyard.com.au/).
 
 Features
 --------
