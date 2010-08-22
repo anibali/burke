@@ -14,7 +14,7 @@ Burke.base_spec do |s|
   
   s.add_dependency 'rake', '~> 0.8.7'
   
-  s.files = FileList['lib/**/*.rb']
+  s.files = %w[README.md Rakefile] + Dir.glob('{lib,spec}/**/*')
 end
 
 Burke.package_task
