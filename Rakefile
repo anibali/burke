@@ -7,6 +7,13 @@ Burke.base_spec do |s|
   s.name = 'burke'
   s.version = Burke::VERSION
   s.summary = 'Helper for creating nice and clean Rake files'
+  s.description = s.summary
+  s.author = 'Aiden Nibali'
+  s.email = 'dismal.denizen@gmail.com'
+  s.homepage = "http://github.com/dismaldenizen/burke"
+  
+  s.add_dependency 'rake', '~> 0.8.7'
+  
   s.files = FileList['lib/**/*.rb']
 end
 
