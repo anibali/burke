@@ -2,150 +2,240 @@ require 'rubygems'
 require 'rubygems/installer'
 require 'rake'
 require 'rake/tasklib'
-
-desc "Build gems for all targets"
-task :gems
+require 'mash'
 
 module Burke
-  VERSION = '0.1.0'
+  VERSION = File.read(File.join(File.dirname(File.dirname(__FILE__)), 'VERSION'))
   
   class << self
-    def base_spec
-      @base_spec ||= Gem::Specification.new
-      yield @base_spec if block_given?
-      @base_spec
+    def enable_all opts={}
+      @tasks = %w[clean yard rdoc rspec gems install].map {|t| t.to_sym}
+      disable opts[:except] if opts[:except]
     end
     
-    def package_task *args, &block
-      Rake::GemPackageTask.new *args, &block
+    def enable *args
+      @tasks.concat([*args].map {|t| t.to_sym})
+      @tasks.uniq!
     end
     
-    def install_task *args, &block
-      Rake::GemInstallTask.new *args, &block
+    def disable *args
+      dis = [*args].map {|t| t.to_sym}
+      @tasks.reject! {|t| dis.include? t}
     end
     
-    def yard_task *args, &block
+    def setup
+      @settings = Mash[
+        :dependencies => Mash[],
+        :docs => Mash[],
+        :rspec => Mash[],
+        :gems => GemSettings.new,
+      ]
+      
+      version_file = File.join(rakefile_dir, 'VERSION')
+      @settings[:version] = File.read(version_file).strip if File.readable?(version_file)
+      
+      yield @settings
+      
+      begin
+        require 'rake/clean'
+        CLOBBER.include(*@settings.clobber) if @settings.clobber
+      rescue LoadError
+      end if @tasks.include? :clean
+      
       begin
         require 'yard'
-        YARD::Rake::YardocTask.new *args, &block
+        opts = []
+        d = @settings.docs
+        opts << "--title" << "#{d.name} #{d.version}"
+        opts << "--readme" << d.readme if d.readme
+        opts << "--markup" << d.markup if d.markup
+        YARD::Rake::YardocTask.new 'yard' do |t|
+          t.options = opts
+        end
       rescue LoadError
-        puts "Couldn't load Yard: generation of Yard docs is disabled"
-      end
-    end
-    
-    def spec_task *args, &block
+      end if @tasks.include? :yard
+      
+      begin
+        require 'rake/rdoctask'
+        d = @settings.docs
+        Rake::RDocTask.new 'rdoc' do |r|
+          if d.readme
+            r.main = d.readme
+            r.rdoc_files.include d.readme, "lib/**/*.rb"
+          end
+          r.title = "#{d.name} #{d.version}"
+        end
+      rescue LoadError
+      end if @tasks.include? :rdoc
+      
       begin
         require 'spec/rake/spectask'
-        Spec::Rake::SpecTask.new *args, &block
+        r = @settings.rspec
+        opts = []
+        opts << "--colour" if r.color
+        Spec::Rake::SpecTask.new 'spec' do |s|
+          s.spec_files = r.spec_files
+          s.spec_opts = opts
+        end unless r.empty?
       rescue LoadError
-        puts "Couldn't load RSpec: running of RSpec examples is disabled"
+      end if @tasks.include? :rspec
+      
+      begin
+        settings.gems.individuals.each do |conf|
+          GemTaskManager.add_task conf
+        end
+        
+        if name
+          desc "Build gem for this platform"
+          task(:gem => GemTaskManager.task_for_this_platform.task_name)
+        end
+      rescue LoadError
+      end if @tasks.include? :gems
+      
+      if @tasks.include? :install
+        GemTaskManager.install_task unless GemTaskManager::TASKS.empty?
+      end
+      
+      @settings
+    end
+    
+    def base_gemspec
+      if @base_gemspec.nil?
+        @base_gemspec = Gem::Specification.new
+        
+        Gem::Specification.attribute_names.each do |attr|
+          value = @settings.send(attr)
+          @base_gemspec.send("#{attr}=", value) if value
+        end
+        
+        @settings.dependencies.each do |gem, version|
+          @base_gemspec.add_dependency gem.to_s, version
+        end
+      end
+      
+      @base_gemspec
+    end
+    
+    def rakefile_dir
+      caller.each do |cl|
+        if %r{^(.*):\d+(?::in )?$} =~ cl
+          f = $1
+          return File.dirname(f) if f != __FILE__
+        end
       end
     end
     
-    def rcov_verify_task *args, &block
-      begin
-        require 'spec/rake/verify_rcov'
-        RCov::VerifyTask.new *args, &block
-      rescue LoadError
-        puts "Couldn't load RSpec and RCov: verification of code coverage with RCov is disabled"
+    def settings
+      @settings
+    end
+  end
+  
+  class GemTaskManager
+    TASKS = {}
+    
+    def self.add_task conf
+      spec = conf.gemspec
+      name = "gem:#{spec.platform}"
+      pkg_dir = Burke.settings.gems.package_dir
+      
+      if TASKS.empty?
+        desc "Build gems for all targets"
+      end
+      task :gems => name
+      
+      unless ::Rake.application.last_comment
+        desc "Build gem for target '#{spec.platform}'"
+      end
+      
+      task(name) do
+        conf.before.call spec unless conf.before.nil?
+        builder = Gem::Builder.new(spec)
+        builder.build
+        verbose true do
+          mkdir pkg_dir unless File.exists? pkg_dir
+          mv conf.gem_file, File.join(pkg_dir, conf.gem_file)
+        end
+        conf.after.call spec unless conf.after.nil?
+      end
+      
+      TASKS[spec.platform] = conf
+    end
+    
+    def self.has_task? platform
+      TASKS.has_key? platform
+    end
+    
+    def self.task_for_this_platform
+      platform = Gem::Platform.new(RUBY_PLATFORM).to_s
+      name = nil
+      
+      if GemTaskManager.has_task? platform
+        name = platform
+      elsif GemTaskManager.has_task? 'ruby'
+        name = "ruby"
+      end
+      
+      TASKS[name]
+    end
+    
+    def self.install_task
+      t = task_for_this_platform
+      
+      desc "Install gem for this platform"
+      task 'install' => [t.task_name] do
+        Gem::Installer.new(File.join(t.package_dir, t.gem_file)).install
       end
     end
   end
   
-  module Rake
-    class GemPackageTask < ::Rake::TaskLib
-      attr_reader :spec, :name
+  class GemSettings
+    attr_accessor :package_dir, :individuals
+    
+    def initialize
+      @package_dir = 'pkg'
+    end
+    
+    def platform plaf
+      conf = IndividualGemSettings.new plaf
+      @individuals ||= []
+      @individuals << conf
+      yield conf if block_given?
+      conf
+    end
+    
+    class IndividualGemSettings
+      attr_reader :platform
       
-      TASKS = {}
-      
-      @@package_dir = 'pkg'
-      
-      def initialize plaf=Gem::Platform::RUBY
-        @spec = Burke.base_spec.dup
-        @spec.platform = Gem::Platform.new plaf
-        @name = "gem:#{@spec.platform}"
-        yield self if block_given?
-        define
+      def initialize plaf
+        @platform = Gem::Platform.new plaf
       end
       
-      def self.package_dir= path
-        @@package_dir = path
-      end
-      
-      def self.package_dir
-        @@package_dir
-      end
-      
-      def before &block
-        @before = block
-      end
-      
-      def extend_spec &block
-        @extend_spec = block
-      end
-      
-      def after &block
-        @after = block
+      def gemspec
+        spec = Burke.base_gemspec.dup
+        spec.platform = @platform
+        spec
       end
       
       def gem_file
-        "#{spec.full_name}.gem"
+        "#{gemspec.full_name}.gem"
       end
       
-      private
-      def define
-        task :gems => name
-        
-        unless ::Rake.application.last_comment
-          desc "Build gem for target '#{@spec.platform}'"
-        end
-        task(name) { run_task }
-        TASKS[name] = self
-        
-        if @spec.platform == Gem::Platform::RUBY
-          desc "Build gem for target '#{@spec.platform}'"
-          task(:gem) { run_task }
-        end
-        
-        self
+      def task_name
+        "gem:#{platform}"
       end
       
-      def run_task
-        @before.call unless @before.nil?
-        @extend_spec.call spec unless @extend_spec.nil?
-        builder = Gem::Builder.new(@spec)
-        builder.build
-        verbose true do
-          mkdir @@package_dir unless File.exists? @@package_dir
-          mv gem_file, File.join(@@package_dir, gem_file)
-        end
-        @after.call unless @after.nil?
-      end
-    end
-    
-    class GemInstallTask < ::Rake::TaskLib
-      attr_reader :name
-      
-      def initialize
-        @name = "install"
-        define
+      def package_dir
+        Burke.settings.gems.package_dir
       end
       
-      private
-      def define
-        platform = Gem::Platform.new(RUBY_PLATFORM).to_s
-        t = nil
-        dep = nil
-        unless t = GemPackageTask::TASKS["gem:#{platform}"]
-          t = GemPackageTask::TASKS["gem:ruby"]
-        end
-        
-        desc "Build and install gem for this platform"
-        task name => [t.name] do
-          Gem::Installer.new(File.join(GemPackageTask.package_dir, t.gem_file)).install
-        end
-        
-        self
+      def before &block
+        @before = block if block_given?
+        @before
+      end
+      
+      def after &block
+        @after = block if block_given?
+        @after
       end
     end
   end
