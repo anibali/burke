@@ -34,17 +34,17 @@ Here is a sample Rakefile using Burke.
       d.markup = 'rdoc'
     end
     
-    s.gems
-      s.platform 'ruby'
+    s.gems do |g|
+      g.platform 'ruby'
       
-      s.platform 'x86-linux' do |p|
-        t.before do |s|
+      g.platform 'x86-linux' do |p|
+        p.before do |s|
           FileUtils.copy 'native/libfoo-x86-linux.so', 'lib/libfoo.so'
           s.add_dependency 'ffi'
           s.files += ['lib/libfoo.so']
         end
         
-        t.after do
+        p.after do
           FileUtils.remove 'lib/libfoo.so'
         end
       end

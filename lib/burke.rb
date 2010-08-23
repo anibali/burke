@@ -29,6 +29,8 @@ module Burke
         :docs => Mash[],
         :rspec => Mash[],
         :gems => GemSettings.new,
+        :clean => [],
+        :clobber => [],
       ]
       
       version_file = File.join(rakefile_dir, 'VERSION')
