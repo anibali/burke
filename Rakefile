@@ -14,6 +14,8 @@ Burke.setup do |s|
     d.rake '~> 0.8.7'
   end
   
+  s.has_rdoc = true
+  
   s.clean = %w[.yardoc]
   s.clobber = %w[pkg doc html]
   

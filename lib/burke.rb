@@ -6,10 +6,11 @@ require 'mash'
 
 module Burke
   VERSION = File.read(File.join(File.dirname(File.dirname(__FILE__)), 'VERSION'))
+  @tasks = []
   
   class << self
     def enable_all opts={}
-      @tasks = %w[clean yard rdoc rspec gems install].map {|t| t.to_sym}
+      @tasks = %w[clean yard rdoc rspec rspec_rcov gems install].map {|t| t.to_sym}
       disable opts[:except] if opts[:except]
     end
     
@@ -27,14 +28,18 @@ module Burke
       @settings = Mash[
         :dependencies => Mash[],
         :docs => Mash[],
-        :rspec => Mash[],
+        :rspec => Mash[:rcov => Mash[]],
         :gems => GemSettings.new,
         :clean => [],
         :clobber => [],
       ]
       
       @settings.files = Dir.glob('{lib,spec}/**/*')
-      @settings.files << 'Rakefile' if File.exists?('Rakefile')
+      %w[Rakefile COPYING LICENSE].each do |file|
+        @settings.files << file if File.exists?(file)
+      end
+      
+      project_files = Dir['*'].reject! {|f| File.directory? f or !File.readable? f}
       
       version_file = 'VERSION'
       if File.readable?(version_file)
@@ -42,9 +47,21 @@ module Burke
         @settings.files << version_file
       end
       
+      license_file = nil
+      project_files.each do |f|
+        if %w[license licence copying].include? f.downcase.split('.').first
+          license_file = f
+        end
+      end
+      
+      if license_file
+        @settings.docs.license = license_file
+        @settings.files << license_file
+      end
+      
       readme_file = nil
-      Dir['*'].each do |f|
-        if f.downcase =~ /readme[\..*]?/ and File.file? f and File.readable? f
+      project_files.each do |f|
+        if f.downcase =~ /readme[\..*]?/
           readme_file = f if readme_file.nil? or f.length < readme_file.length
         end
       end
@@ -73,13 +90,24 @@ module Burke
       rescue LoadError
       end if @tasks.include? :clean
       
+      unless @settings.docs.files
+        d = @settings.docs
+        fl = FileList.new
+        fl.include "lib/**/*.rb"
+        fl.include d.readme if d.readme
+        fl.include d.license if d.license
+        d.files = fl.to_a
+      end
+      
       begin
         require 'yard'
         opts = []
         d = @settings.docs
-        opts << "--title" << "#{d.name} #{d.version}"
+        opts << "--title" << "#{@settings.name} #{@settings.version}"
         opts << "--readme" << d.readme if d.readme
         opts << "--markup" << d.markup if d.markup
+        extra_files = [d.license].compact
+        opts << "--files" << extra_files.join(',') unless extra_files.empty?
         YARD::Rake::YardocTask.new 'yard' do |t|
           t.options = opts
         end
@@ -90,14 +118,21 @@ module Burke
         require 'rake/rdoctask'
         d = @settings.docs
         Rake::RDocTask.new 'rdoc' do |r|
-          if d.readme
-            r.main = d.readme
-            r.rdoc_files.include d.readme, "lib/**/*.rb"
-          end
-          r.title = "#{d.name} #{d.version}"
+          r.rdoc_files.include d.files
+          r.title = "#{@settings.name} #{@settings.version}"
+          r.main = d.readme if d.readme
         end
       rescue LoadError
       end if @tasks.include? :rdoc
+      
+      if @settings.has_rdoc
+        d = @settings.docs
+        (@settings.extra_rdoc_files ||= []).concat d.files
+        opts = []
+        opts << "--title" << "#{@settings.name} #{@settings.version}"
+        opts << "--main" << d.readme if d.readme
+        @settings.rdoc_options ||= opts
+      end
       
       begin
         require 'spec/rake/spectask'
@@ -105,10 +140,28 @@ module Burke
         opts = []
         opts << "--colour" if r.color
         opts << "--format" << r.format if r.format
-        Spec::Rake::SpecTask.new 'spec' do |s|
-          s.spec_files = r.spec_files
-          s.spec_opts = opts
+        Spec::Rake::SpecTask.new 'spec' do |t|
+          t.spec_files = r.spec_files
+          t.spec_opts = opts
         end unless r.empty?
+        
+        begin
+          require 'spec/rake/verify_rcov'
+          
+          desc "Run specs with RCov"
+          Spec::Rake::SpecTask.new('spec:rcov') do |t|
+            t.spec_files = r.spec_files
+            t.spec_opts = opts
+            t.rcov = true
+            t.rcov_opts = ['--exclude', 'spec']
+          end
+
+          RCov::VerifyTask.new('spec:rcov:verify' => 'spec:rcov') do |t|
+            t.threshold = r.rcov.threshold
+            t.index_html = 'coverage/index.html'
+          end if r.rcov.threshold
+        rescue LoadError
+        end if @tasks.include? :rspec_rcov
       rescue LoadError
       end if @tasks.include? :rspec
       
@@ -152,15 +205,6 @@ module Burke
       @base_gemspec
     end
     
-    def rakefile_dir
-      caller.each do |cl|
-        if %r{^(.*):\d+(?::in )?$} =~ cl
-          f = $1
-          return File.dirname(f) if f != __FILE__
-        end
-      end
-    end
-    
     def settings
       @settings
     end
@@ -194,7 +238,7 @@ module Burke
         conf.after.call spec unless conf.after.nil?
       end
       
-      TASKS[spec.platform] = conf
+      TASKS[spec.platform.to_s] = conf
     end
     
     def self.has_task? platform

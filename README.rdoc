@@ -3,8 +3,11 @@
 == Synopsis
 
 Burke provides a bunch of helpers to make creating Rake files a little more
-pleasant. It is named after Don Burke, host of an Australian gardening and
-home improvement show named Burke's Backyard (http://www.burkesbackyard.com.au).
+pleasant. There are many subjective elements to this project, particularly
+when it comes to sensible defaults, but popular Ruby conventions are adhered to
+where possible. The project is named after Don Burke, host of an Australian
+gardening and home improvement show named Burke's Backyard
+(http://www.burkesbackyard.com.au).
 
 == Features
 
@@ -54,8 +57,8 @@ Here is a sample Rakefile using Burke.
 == Default attributes
 
 * +version+ inferred from contents of 'VERSION' file
-* +files+ all files in 'lib' and 'spec' plus detected 'README', 'VERSION' and/or
-  'Rakefile'
+* +files+ all files in 'lib' and 'spec' plus detected 'README', 'VERSION',
+  'LICENSE', 'COPYING' and/or 'Rakefile'
 * +docs.readme+ inferred from files matching 'README[\..*]?', case ignored
 * +docs.markup+ inferred from extension of detected README file
 * +rspec.spec_files+ 'spec/**/*_spec.rb'
