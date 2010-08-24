@@ -20,7 +20,6 @@ Here is a sample Rakefile using Burke.
 
   require 'rubygems'
   require 'burke'
-  require 'fileutils'
   
   # Enable all tasks possible
   Burke.enable_all
@@ -42,13 +41,13 @@ Here is a sample Rakefile using Burke.
       
       g.platform 'x86-linux' do |p|
         p.before do |s|
-          FileUtils.copy 'native/libfoo-x86-linux.so', 'lib/libfoo.so'
+          cp 'native/libfoo-x86-linux.so', 'lib/libfoo.so'
           s.add_dependency 'ffi'
           s.files += ['lib/libfoo.so']
         end
         
         p.after do
-          FileUtils.remove 'lib/libfoo.so'
+          rm 'lib/libfoo.so'
         end
       end
     end
