@@ -135,7 +135,11 @@ module Burke
       if @base_gemspec.nil?
         @base_gemspec = Gem::Specification.new
         
-        (Gem::Specification.attribute_names + [:author]).each do |attr|
+        attrs = Gem::Specification.attribute_names
+        attrs -= [:dependencies]
+        attrs += [:author]
+        
+        attrs.each do |attr|
           value = @settings.send(attr)
           @base_gemspec.send("#{attr}=", value) if value
         end
