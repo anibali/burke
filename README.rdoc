@@ -51,3 +51,13 @@ Here is a sample Rakefile using Burke.
     end
   end
 
+== Default attributes
+
+* +version+ inferred from contents of 'VERSION' file
+* +files+ all files in 'lib' and 'spec' plus detected 'README', 'VERSION' and/or
+  'Rakefile'
+* +docs.readme+ inferred from files matching 'README[\..*]?', case ignored
+* +docs.markup+ inferred from extension of detected README file
+* +rspec.spec_files+ 'spec/**/*_spec.rb'
+* +rspec.color+ true
+

@@ -33,8 +33,37 @@ module Burke
         :clobber => [],
       ]
       
-      version_file = File.join(rakefile_dir, 'VERSION')
-      @settings[:version] = File.read(version_file).strip if File.readable?(version_file)
+      @settings.files = Dir.glob('{lib,spec}/**/*')
+      @settings.files << 'Rakefile' if File.exists?('Rakefile')
+      
+      version_file = 'VERSION'
+      if File.readable?(version_file)
+        @settings.version = File.read(version_file).strip
+        @settings.files << version_file
+      end
+      
+      readme_file = nil
+      Dir['*'].each do |f|
+        if f.downcase =~ /readme[\..*]?/ and File.file? f and File.readable? f
+          readme_file = f if readme_file.nil? or f.length < readme_file.length
+        end
+      end
+      
+      if readme_file
+        @settings.docs.readme = File.basename readme_file
+        @settings.files << readme_file
+        @settings.docs.markup = case File.extname(readme_file).downcase
+        when '.rdoc'
+          'rdoc'
+        when '.md'
+          'markdown'
+        when '.textile'
+          'textile'
+        end
+      end
+      
+      @settings.rspec.spec_files = Dir['spec/**/*_spec.rb']
+      @settings.rspec.color = true
       
       yield @settings
       
@@ -75,6 +104,7 @@ module Burke
         r = @settings.rspec
         opts = []
         opts << "--colour" if r.color
+        opts << "--format" << r.format if r.format
         Spec::Rake::SpecTask.new 'spec' do |s|
           s.spec_files = r.spec_files
           s.spec_opts = opts
@@ -105,7 +135,7 @@ module Burke
       if @base_gemspec.nil?
         @base_gemspec = Gem::Specification.new
         
-        Gem::Specification.attribute_names.each do |attr|
+        (Gem::Specification.attribute_names + [:author]).each do |attr|
           value = @settings.send(attr)
           @base_gemspec.send("#{attr}=", value) if value
         end
