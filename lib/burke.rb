@@ -34,53 +34,58 @@ module Burke
         :clobber => [],
       ]
       
-      @settings.files = Dir.glob('{lib,spec}/**/*')
-      %w[Rakefile COPYING LICENSE].each do |file|
-        @settings.files << file if File.exists?(file)
-      end
-      
-      project_files = Dir['*'].reject! {|f| File.directory? f or !File.readable? f}
-      
-      version_file = 'VERSION'
-      if File.readable?(version_file)
-        @settings.version = File.read(version_file).strip
-        @settings.files << version_file
-      end
-      
-      license_file = nil
-      project_files.each do |f|
-        if %w[license licence copying].include? f.downcase.split('.').first
-          license_file = f
+      @settings.getter_filter :files do |v|
+        if v.nil?
+          v = Dir.glob('{lib,spec}/**/*')
+          v << @settings.docs.readme
+          v << @settings.docs.license
+          v << 'Rakefile' if File.readable? 'Rakefile'
+          v << 'VERSION' if File.readable? 'VERSION'
+          v.compact
+        else
+          v
         end
       end
       
-      if license_file
-        @settings.docs.license = license_file
-        @settings.files << license_file
-      end
-      
-      readme_file = nil
-      project_files.each do |f|
-        if f.downcase =~ /readme[\..*]?/
-          readme_file = f if readme_file.nil? or f.length < readme_file.length
+      @settings.getter_filter :version do |v|
+        if v.nil? and File.readable? 'VERSION'
+          File.read('VERSION').strip
+        else
+          v
         end
       end
       
-      if readme_file
-        @settings.docs.readme = File.basename readme_file
-        @settings.files << readme_file
-        @settings.docs.markup = case File.extname(readme_file).downcase
-        when '.rdoc'
-          'rdoc'
-        when '.md'
-          'markdown'
-        when '.textile'
-          'textile'
+      @settings.docs.getter_filter :readme do |v|
+        v or Dir.glob('{readme,readme.*}', File::FNM_CASEFOLD).first
+      end
+      
+      @settings.docs.getter_filter :license do |v|
+        v or Dir.glob('{license,license.*,copying,copying.*,licence,licence.*}', File::FNM_CASEFOLD).first
+      end
+      
+      @settings.docs.getter_filter :markup do |v|
+        readme = @settings.docs.readme
+        if v.nil? and readme
+          case File.extname(readme).downcase
+          when '.rdoc'
+            'rdoc'
+          when '.md', '.markdown'
+            'markdown'
+          when '.textile'
+            'textile'
+          end
+        else
+          v
         end
       end
       
-      @settings.rspec.spec_files = Dir['spec/**/*_spec.rb']
-      @settings.rspec.color = true
+      @settings.rspec.getter_filter :color do |v|
+        v.nil? ? true : v
+      end
+      
+      @settings.rspec.getter_filter :spec_files do |v|
+        v or Dir['spec/**/*_spec.rb']
+      end
       
       yield @settings
       
