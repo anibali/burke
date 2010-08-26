@@ -87,6 +87,8 @@ module Burke
         v or Dir['spec/**/*_spec.rb']
       end
       
+      @settings.rspec.setter_filter(:ruby_opts) { |v| [*v] }
+      
       yield @settings
       
       begin
@@ -148,6 +150,7 @@ module Burke
         Spec::Rake::SpecTask.new 'spec' do |t|
           t.spec_files = r.spec_files
           t.spec_opts = opts
+          t.ruby_opts = r.ruby_opts if r.ruby_opts
         end unless r.empty?
         
         begin
