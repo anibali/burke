@@ -6,11 +6,12 @@ require 'mash'
 
 module Burke
   VERSION = File.read(File.join(File.dirname(File.dirname(__FILE__)), 'VERSION'))
+  ALL_TASKS = [:clean, :yard, :rdoc, :rspec, :rspec_rcov, :gems, :install, :test]
   @tasks = []
   
   class << self
     def enable_all opts={}
-      @tasks = %w[clean yard rdoc rspec rspec_rcov gems install].map {|t| t.to_sym}
+      @tasks = ALL_TASKS.dup
       disable opts[:except] if opts[:except]
     end
     
@@ -29,6 +30,7 @@ module Burke
         :dependencies => Mash[],
         :docs => Mash[],
         :rspec => Mash[:rcov => Mash[]],
+        :test => Mash[],
         :gems => GemSettings.new,
         :clean => [],
         :clobber => [],
@@ -39,8 +41,8 @@ module Burke
           v = Dir.glob('{lib,spec}/**/*')
           v << @settings.docs.readme
           v << @settings.docs.license
-          v << 'Rakefile' if File.readable? 'Rakefile'
-          v << 'VERSION' if File.readable? 'VERSION'
+          v << 'Rakefile' if readable_file? 'Rakefile'
+          v << 'VERSION' if readable_file? 'VERSION'
           v.compact
         else
           v
@@ -48,7 +50,7 @@ module Burke
       end
       
       @settings.getter_filter :version do |v|
-        if v.nil? and File.readable? 'VERSION'
+        if v.nil? and readable_file? 'VERSION'
           File.read('VERSION').strip
         else
           v
@@ -56,11 +58,23 @@ module Burke
       end
       
       @settings.docs.getter_filter :readme do |v|
-        v or Dir.glob('{readme,readme.*}', File::FNM_CASEFOLD).first
+        if v.nil?
+          files = Dir.glob('{readme,readme.*}', File::FNM_CASEFOLD)
+          files.reject! { |f| !readable_file? f }
+          files.first
+        else
+          v
+        end
       end
       
       @settings.docs.getter_filter :license do |v|
-        v or Dir.glob('{license,license.*,copying,copying.*,licence,licence.*}', File::FNM_CASEFOLD).first
+        if v.nil?
+          files = Dir.glob('{license,license.*,copying,copying.*,licence,licence.*}', File::FNM_CASEFOLD)
+          files.reject! { |f| !readable_file? f }
+          files.first
+        else
+          v
+        end
       end
       
       @settings.docs.getter_filter :markup do |v|
@@ -77,6 +91,10 @@ module Burke
         else
           v
         end
+      end
+      
+      @settings.test.getter_filter :test_files do |v|
+        v or Dir['test/**/{*_{test,tc},{test,tc}_*}.rb']
       end
       
       @settings.rspec.getter_filter :color do |v|
@@ -151,7 +169,7 @@ module Burke
           t.spec_files = r.spec_files
           t.spec_opts = opts
           t.ruby_opts = r.ruby_opts if r.ruby_opts
-        end unless r.empty?
+        end
         
         begin
           require 'spec/rake/verify_rcov'
@@ -163,7 +181,8 @@ module Burke
             t.rcov = true
             t.rcov_opts = ['--exclude', 'spec']
           end
-
+          
+          desc "Run specs with RCov and verify code coverage"
           RCov::VerifyTask.new('spec:rcov:verify' => 'spec:rcov') do |t|
             t.threshold = r.rcov.threshold
             t.index_html = 'coverage/index.html'
@@ -171,7 +190,15 @@ module Burke
         rescue LoadError
         end if @tasks.include? :rspec_rcov
       rescue LoadError
-      end if @tasks.include? :rspec
+      end if @tasks.include? :rspec and !@settings.rspec.spec_files.empty?
+      
+      begin
+        require 'rake/testtask'
+        Rake::TestTask.new do |t|
+          t.test_files = @settings.test.test_files
+        end
+      rescue LoadError
+      end if @tasks.include? :test and !@settings.test.test_files.empty?
       
       begin
         settings.gems.individuals.each do |conf|
@@ -215,6 +242,11 @@ module Burke
     
     def settings
       @settings
+    end
+    
+    private
+    def readable_file? file
+      File.readable? file and File.file? file
     end
   end
   
