@@ -38,7 +38,7 @@ module Burke
       
       @settings.getter_filter :files do |v|
         if v.nil?
-          v = Dir.glob('{lib,spec}/**/*')
+          v = Dir.glob('{lib,spec,bin}/**/*')
           v << @settings.docs.readme
           v << @settings.docs.license
           v << 'Rakefile' if readable_file? 'Rakefile'
