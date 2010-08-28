@@ -29,10 +29,8 @@ Here is a sample Rakefile using Burke.
     s.name = 'foo'
     s.version = '1.2.3'
     s.summary = 'an example Ruby library with extra foo'
-    s.files = FileList['lib/**/*.rb']
     
     s.docs do |d|
-      d.readme = 'README'
       d.markup = 'rdoc'
     end
     
@@ -52,14 +50,4 @@ Here is a sample Rakefile using Burke.
       end
     end
   end
-
-== Default attributes
-
-* +version+ inferred from contents of 'VERSION' file
-* +files+ all files in 'lib' and 'spec' plus detected 'README', 'VERSION',
-  'LICENSE', 'COPYING' and/or 'Rakefile'
-* +docs.readme+ inferred from files matching 'README[\..*]?', case ignored
-* +docs.markup+ inferred from extension of detected README file
-* +rspec.spec_files+ 'spec/**/*_spec.rb'
-* +rspec.color+ true
 
