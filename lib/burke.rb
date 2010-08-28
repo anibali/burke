@@ -109,6 +109,10 @@ module Burke
       
       yield @settings
       
+      if @tasks.include? :gems and GemTaskManager::TASKS.empty?
+        @settings.gems.platform 'ruby'
+      end
+      
       begin
         require 'rake/clean'
         CLOBBER.include(*@settings.clobber) if @settings.clobber

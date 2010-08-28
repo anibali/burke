@@ -10,17 +10,11 @@ Burke.setup do |s|
   s.email = 'dismal.denizen@gmail.com'
   s.homepage = "http://github.com/dismaldenizen/burke"
   
-  s.dependencies do |d|
-    d.rake '~> 0.8.7'
-  end
+  s.dependencies.rake '~> 0.8.7'
   
   s.has_rdoc = true
   
   s.clean = %w[.yardoc]
   s.clobber = %w[pkg doc html]
-  
-  s.gems do |g|
-    g.platform 'ruby'
-  end
 end
 
