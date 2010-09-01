@@ -38,43 +38,37 @@ module Burke
       
       @settings.getter_filter :files do |v|
         if v.nil?
-          v = Dir.glob('{lib,spec,bin}/**/*')
-          v << @settings.docs.readme
-          v << @settings.docs.license
-          v << 'Rakefile' if readable_file? 'Rakefile'
-          v << 'VERSION' if readable_file? 'VERSION'
+          v = Dir['{lib,spec,bin}/**/*']
+          v << @settings.docs.readme_file
+          v << @settings.docs.license_file
+          v << @settings.version_file
+          v << @settings.rakefile_file
           v.compact
         else
           v
         end
       end
       
-      @settings.getter_filter :version do |v|
-        if v.nil? and readable_file? 'VERSION'
-          File.read('VERSION').strip
-        else
-          v
-        end
+      @settings.getter_filter :rakefile_file do |v|
+        v or find_file 'rakefile'
       end
       
-      @settings.docs.getter_filter :readme do |v|
-        if v.nil?
-          files = Dir.glob('{readme,readme.*}', File::FNM_CASEFOLD)
-          files.reject! { |f| !readable_file? f }
-          files.first
-        else
-          v
-        end
+      @settings.getter_filter :version_file do |v|
+        v or find_file '{version,version.*}'
       end
+      
+      @settings.getter_filter :version do |v|
+        v or File.read(@settings.version_file).strip
+      end
+      
+      @settings.docs.getter_filter :readme_file do |v|
+        v or find_file '{readme,readme.*}'
+      end
+      @settings.docs.getter_filter(:readme) { @settings.docs.readme_file }
+      @settings.docs.setter_filter(:readme) { |v| @settings.docs.readme_file = v }
       
       @settings.docs.getter_filter :license do |v|
-        if v.nil?
-          files = Dir.glob('{license,license.*,copying,copying.*,licence,licence.*}', File::FNM_CASEFOLD)
-          files.reject! { |f| !readable_file? f }
-          files.first
-        else
-          v
-        end
+        v or find_file '{license,license.*,copying,copying.*,licence,licence.*}'
       end
       
       @settings.docs.getter_filter :markup do |v|
@@ -97,6 +91,10 @@ module Burke
         v or Dir['test/**/{*_{test,tc},{test,tc}_*}.rb']
       end
       
+      @settings.rspec.getter_filter :options_file do |v|
+        v or find_file '.specopts'
+      end
+      
       @settings.rspec.getter_filter :color do |v|
         v.nil? ? true : v
       end
@@ -115,6 +113,7 @@ module Burke
       
       begin
         require 'rake/clean'
+        CLEAN.include(*@settings.clean) if @settings.clean
         CLOBBER.include(*@settings.clobber) if @settings.clobber
       rescue LoadError
       end if @tasks.include? :clean
@@ -167,8 +166,12 @@ module Burke
         require 'spec/rake/spectask'
         r = @settings.rspec
         opts = []
-        opts << "--colour" if r.color
-        opts << "--format" << r.format if r.format
+        if r.options_file
+          opts << "--options" << r.options_file
+        else
+          opts << "--colour" if r.color
+          opts << "--format" << r.format if r.format
+        end
         Spec::Rake::SpecTask.new 'spec' do |t|
           t.spec_files = r.spec_files
           t.spec_opts = opts
@@ -251,6 +254,11 @@ module Burke
     private
     def readable_file? file
       File.readable? file and File.file? file
+    end
+    
+    def find_file pattern
+      files = Dir.glob(pattern, File::FNM_CASEFOLD)
+      files.find { |f| readable_file? f }
     end
   end
   
