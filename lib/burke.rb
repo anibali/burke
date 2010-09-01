@@ -4,6 +4,10 @@ require 'rake'
 require 'rake/tasklib'
 require 'mash'
 
+# Ensure that we are in the same directory as the Rakefile to avoid any nasty
+# surprises.
+Dir.chdir Rake.original_dir
+
 module Burke
   VERSION = File.read(File.join(File.dirname(File.dirname(__FILE__)), 'VERSION'))
   ALL_TASKS = [:clean, :yard, :rdoc, :rspec, :rspec_rcov, :gems, :install, :test]
