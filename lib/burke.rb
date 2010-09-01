@@ -54,7 +54,7 @@ module Burke
       end
       
       @settings.getter_filter :version_file do |v|
-        v or find_file '{version,version.*}'
+        v or find_file 'version{.*,}'
       end
       
       @settings.getter_filter :version do |v|
@@ -62,14 +62,16 @@ module Burke
       end
       
       @settings.docs.getter_filter :readme_file do |v|
-        v or find_file '{readme,readme.*}'
+        v or find_file 'readme{.*,}'
       end
       @settings.docs.getter_filter(:readme) { @settings.docs.readme_file }
       @settings.docs.setter_filter(:readme) { |v| @settings.docs.readme_file = v }
       
-      @settings.docs.getter_filter :license do |v|
-        v or find_file '{license,license.*,copying,copying.*,licence,licence.*}'
+      @settings.docs.getter_filter :license_file do |v|
+        v or find_file '{licen{c,s}e,copying}{.*,}'
       end
+      @settings.docs.getter_filter(:license) { @settings.docs.license_file }
+      @settings.docs.setter_filter(:license) { |v| @settings.docs.license_file = v }
       
       @settings.docs.getter_filter :markup do |v|
         readme = @settings.docs.readme
