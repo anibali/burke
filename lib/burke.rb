@@ -4,10 +4,6 @@ require 'rake'
 require 'rake/tasklib'
 require 'mash'
 
-# Ensure that we are in the same directory as the Rakefile to avoid any nasty
-# surprises.
-Dir.chdir Rake.original_dir
-
 module Burke
   VERSION = File.read(File.join(File.dirname(File.dirname(__FILE__)), 'VERSION'))
   ALL_TASKS = [:clean, :yard, :rdoc, :rspec, :rspec_rcov, :gems, :install, :test]
@@ -30,86 +26,7 @@ module Burke
     end
     
     def setup
-      @settings = Mash[
-        :dependencies => Mash[],
-        :docs => Mash[],
-        :rspec => Mash[:rcov => Mash[]],
-        :test => Mash[],
-        :gems => GemSettings.new,
-        :clean => [],
-        :clobber => [],
-      ]
-      
-      @settings.getter_filter :files do |v|
-        if v.nil?
-          v = Dir['{lib,spec,bin}/**/*']
-          v << @settings.docs.readme_file
-          v << @settings.docs.license_file
-          v << @settings.version_file
-          v << @settings.rakefile_file
-          v.compact
-        else
-          v
-        end
-      end
-      
-      @settings.getter_filter :rakefile_file do |v|
-        v or find_file 'rakefile'
-      end
-      
-      @settings.getter_filter :version_file do |v|
-        v or find_file 'version{.*,}'
-      end
-      
-      @settings.getter_filter :version do |v|
-        v or File.read(@settings.version_file).strip
-      end
-      
-      @settings.docs.getter_filter :readme_file do |v|
-        v or find_file 'readme{.*,}'
-      end
-      @settings.docs.getter_filter(:readme) { @settings.docs.readme_file }
-      @settings.docs.setter_filter(:readme) { |v| @settings.docs.readme_file = v }
-      
-      @settings.docs.getter_filter :license_file do |v|
-        v or find_file '{licen{c,s}e,copying}{.*,}'
-      end
-      @settings.docs.getter_filter(:license) { @settings.docs.license_file }
-      @settings.docs.setter_filter(:license) { |v| @settings.docs.license_file = v }
-      
-      @settings.docs.getter_filter :markup do |v|
-        readme = @settings.docs.readme
-        if v.nil? and readme
-          case File.extname(readme).downcase
-          when '.rdoc'
-            'rdoc'
-          when '.md', '.markdown'
-            'markdown'
-          when '.textile'
-            'textile'
-          end
-        else
-          v
-        end
-      end
-      
-      @settings.test.getter_filter :test_files do |v|
-        v or Dir['test/**/{*_{test,tc},{test,tc}_*}.rb']
-      end
-      
-      @settings.rspec.getter_filter :options_file do |v|
-        v or find_file '.specopts'
-      end
-      
-      @settings.rspec.getter_filter :color do |v|
-        v.nil? ? true : v
-      end
-      
-      @settings.rspec.getter_filter :spec_files do |v|
-        v or Dir['spec/**/*_spec.rb']
-      end
-      
-      @settings.rspec.setter_filter(:ruby_opts) { |v| [*v] }
+      @settings = create_settings
       
       yield @settings
       
@@ -117,6 +34,12 @@ module Burke
         @settings.gems.platform 'ruby'
       end
       
+      generate_tasks
+      
+      return @settings
+    end
+    
+    def generate_tasks
       begin
         require 'rake/clean'
         CLEAN.include(*@settings.clean) if @settings.clean
@@ -228,8 +151,6 @@ module Burke
       if @tasks.include? :install
         GemTaskManager.install_task unless GemTaskManager::TASKS.empty?
       end
-      
-      @settings
     end
     
     def base_gemspec
@@ -255,6 +176,95 @@ module Burke
     
     def settings
       @settings
+    end
+    
+    def create_settings
+      s = Mash[
+        :dependencies => Mash[],
+        :docs => Mash[],
+        :rspec => Mash[:rcov => Mash[]],
+        :test => Mash[],
+        :gems => GemSettings.new,
+        :clean => [],
+        :clobber => [],
+      ]
+      
+      s.getter_filter :files do |v|
+        if v.nil?
+          v = Dir['{lib,spec,bin}/**/*']
+          v << @settings.docs.readme_file
+          v << @settings.docs.license_file
+          v << @settings.version_file
+          v << @settings.rakefile_file
+          v.compact
+        else
+          v
+        end
+      end
+      
+      s.getter_filter :rakefile_file do |v|
+        v or find_file 'rakefile'
+      end
+      
+      s.getter_filter :version_file do |v|
+        v or find_file 'version{.*,}'
+      end
+      
+      s.getter_filter :version do |v|
+        if v.nil? and @settings.version_file
+          File.read(@settings.version_file).strip
+        else
+          v
+        end
+      end
+      
+      s.docs.getter_filter :readme_file do |v|
+        v or find_file 'readme{.*,}'
+      end
+      s.docs.getter_filter(:readme) { s.docs.readme_file }
+      s.docs.setter_filter(:readme) { |v| s.docs.readme_file = v }
+      
+      s.docs.getter_filter :license_file do |v|
+        v or find_file '{licen{c,s}e,copying}{.*,}'
+      end
+      s.docs.getter_filter(:license) { s.docs.license_file }
+      s.docs.setter_filter(:license) { |v| s.docs.license_file = v }
+      
+      s.docs.getter_filter :markup do |v|
+        readme = s.docs.readme
+        if v.nil? and readme
+          case File.extname(readme).downcase
+          when '.rdoc'
+            'rdoc'
+          when '.md', '.markdown'
+            'markdown'
+          when '.textile'
+            'textile'
+          end
+        else
+          v
+        end
+      end
+      
+      s.test.getter_filter :test_files do |v|
+        v or Dir['test/**/{*_{test,tc},{test,tc}_*}.rb']
+      end
+      
+      s.rspec.getter_filter :options_file do |v|
+        v or find_file '.specopts'
+      end
+      
+      s.rspec.getter_filter :color do |v|
+        v.nil? ? true : v
+      end
+      
+      s.rspec.getter_filter :spec_files do |v|
+        v or Dir['spec/**/*_spec.rb']
+      end
+      
+      s.rspec.setter_filter(:ruby_opts) { |v| [*v] }
+      
+      return s
     end
     
     private

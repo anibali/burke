@@ -1,0 +1,7 @@
+require 'rubygems'
+require 'burke'
+
+Burke.enable_all
+
+Burke.setup &eval(File.read('setup_burke.rb'))
+
