@@ -179,6 +179,7 @@ module Burke
     end
     
     def create_settings
+      # TODO: put default values in getter filters
       s = Mash[
         :dependencies => Mash[],
         :docs => Mash[],
@@ -196,36 +197,36 @@ module Burke
           v << @settings.docs.license_file
           v << @settings.version_file
           v << @settings.rakefile_file
-          v.compact
+          v.compact.freeze
         else
           v
         end
       end
       
       s.getter_filter :rakefile_file do |v|
-        v or find_file 'rakefile'
+        v or find_file('rakefile').freeze
       end
       
       s.getter_filter :version_file do |v|
-        v or find_file 'version{.*,}'
+        v or find_file('version{.*,}').freeze
       end
       
       s.getter_filter :version do |v|
         if v.nil? and @settings.version_file
-          File.read(@settings.version_file).strip
+          File.read(@settings.version_file).strip.freeze
         else
           v
         end
       end
       
       s.docs.getter_filter :readme_file do |v|
-        v or find_file 'readme{.*,}'
+        v or find_file('readme{.*,}').freeze
       end
       s.docs.getter_filter(:readme) { s.docs.readme_file }
       s.docs.setter_filter(:readme) { |v| s.docs.readme_file = v }
       
       s.docs.getter_filter :license_file do |v|
-        v or find_file '{licen{c,s}e,copying}{.*,}'
+        v or find_file('{licen{c,s}e,copying}{.*,}').freeze
       end
       s.docs.getter_filter(:license) { s.docs.license_file }
       s.docs.setter_filter(:license) { |v| s.docs.license_file = v }
@@ -240,18 +241,18 @@ module Burke
             'markdown'
           when '.textile'
             'textile'
-          end
+          end.freeze
         else
           v
         end
       end
       
       s.test.getter_filter :test_files do |v|
-        v or Dir['test/**/{*_{test,tc},{test,tc}_*}.rb']
+        v or Dir['test/**/{*_{test,tc},{test,tc}_*}.rb'].freeze
       end
       
       s.rspec.getter_filter :options_file do |v|
-        v or find_file '.specopts'
+        v or find_file('.specopts').freeze
       end
       
       s.rspec.getter_filter :color do |v|
@@ -259,7 +260,7 @@ module Burke
       end
       
       s.rspec.getter_filter :spec_files do |v|
-        v or Dir['spec/**/*_spec.rb']
+        v or Dir['spec/**/*_spec.rb'].freeze
       end
       
       s.rspec.setter_filter(:ruby_opts) { |v| [*v] }
