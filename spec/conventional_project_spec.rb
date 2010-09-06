@@ -5,11 +5,13 @@ describe Burke do
   describe 'settings' do
     context 'for example of a conventional project' do
       before do
+        @old_pwd = Dir.pwd
         Dir.chdir File.join(DIR, 'conventional_project')
-        @settings = Burke.create_settings
-        eval(File.read('setup_burke.rb')).call @settings
-        @settings
+        mock_burke_setup
+        eval(File.read('Rakefile'))
+        @settings = Burke.test_settings
       end
+      
       subject { @settings }
       
       its(:name) { should eql 'conventional_project' }
@@ -22,6 +24,11 @@ describe Burke do
         its(:readme_file) { should eql 'README.md' }
         its(:license_file) { should eql 'COPYING' }
         its(:markup) { should eql 'markdown' }
+      end
+      
+      after do
+        unmock_burke_setup
+        Dir.chdir @old_pwd
       end
     end
   end

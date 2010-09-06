@@ -3,5 +3,8 @@ require 'burke'
 
 Burke.enable_all
 
-Burke.setup &eval(File.read('setup_burke.rb'))
+Burke.setup do |s|
+  s.name = 'conventional_project'
+  s.summary = 'A sample project which follows conventions'
+end
 
