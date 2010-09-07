@@ -1,7 +1,5 @@
 require 'rubygems'
-require 'rubygems/installer'
 require 'rake'
-require 'rake/tasklib'
 require 'mash'
 
 module Burke
@@ -148,9 +146,11 @@ module Burke
       rescue LoadError
       end if @tasks.include? :gems
       
-      if @tasks.include? :install
+      begin
+        require 'rubygems/installer'
         GemTaskManager.install_task unless GemTaskManager::TASKS.empty?
-      end
+      rescue LoadError
+      end if @tasks.include? :install
     end
     
     def base_gemspec
