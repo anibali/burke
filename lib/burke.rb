@@ -1,6 +1,46 @@
 require 'rubygems'
 require 'rake'
-require 'mash'
+require 'hashie'
+
+class Smash < Hashie::Mash
+  def initialize *args
+    super
+    @read_filters = {}
+    @write_filters = {}
+  end
+  
+  def method_missing name, *args
+    key = convert_key(name)
+    if key? key or @read_filters.key? key
+      value = self[key]
+      yield value if block_given?
+      value
+    else
+      super
+    end
+  end
+  
+  def [](key)
+    filter = @read_filters[convert_key(key)]
+    value = super(key)
+    filter.nil? ? value : filter[value]
+  end
+  
+  def []=(key, value)
+    filter = @write_filters[convert_key(key)]
+    value = filter[value] if filter
+    super(key, value)
+  end
+  
+  def read_filter key, &block
+    key = convert_key(key)
+    @read_filters[key] = block
+  end
+  
+  def write_filter key, &block
+    @write_filters[convert_key(key)] = block
+  end
+end
 
 module Burke
   VERSION = File.read(File.join(File.dirname(File.dirname(__FILE__)), 'VERSION'))
@@ -180,58 +220,57 @@ module Burke
     
     def create_settings
       # TODO: put default values in getter filters
-      s = Mash[
-        :dependencies => Mash[],
-        :docs => Mash[],
-        :rspec => Mash[:rcov => Mash[]],
-        :test => Mash[],
-        :gems => GemSettings.new,
-        :clean => [],
-        :clobber => [],
-      ]
+      s = Smash.new
+      s.dependencies!
+      s.docs!
+      s.rspec!.rcov!
+      s.test!
+      s.gems = GemSettings.new
+      s.clean = []
+      s.clobber = []
       
-      s.getter_filter :files do |v|
+      s.read_filter :files do |v|
         if v.nil?
           v = Dir['{lib,spec,bin}/**/*']
-          v << @settings.docs.readme_file
-          v << @settings.docs.license_file
-          v << @settings.version_file
-          v << @settings.rakefile_file
+          v << s.docs.readme_file
+          v << s.docs.license_file
+          v << s.version_file
+          v << s.rakefile_file
           v.compact.freeze
         else
           v
         end
       end
       
-      s.getter_filter :rakefile_file do |v|
+      s.read_filter :rakefile_file do |v|
         v or find_file('rakefile').freeze
       end
       
-      s.getter_filter :version_file do |v|
+      s.read_filter :version_file do |v|
         v or find_file('version{.*,}').freeze
       end
       
-      s.getter_filter :version do |v|
-        if v.nil? and @settings.version_file
-          File.read(@settings.version_file).strip.freeze
+      s.read_filter :version do |v|
+        if v.nil? and s.version_file
+          File.read(s.version_file).strip.freeze
         else
           v
         end
       end
       
-      s.docs.getter_filter :readme_file do |v|
+      s.docs.read_filter :readme_file do |v|
         v or find_file('readme{.*,}').freeze
       end
-      s.docs.getter_filter(:readme) { s.docs.readme_file }
-      s.docs.setter_filter(:readme) { |v| s.docs.readme_file = v }
+      s.docs.read_filter(:readme) { s.docs.readme_file }
+      s.docs.write_filter(:readme) { |v| s.docs.readme_file = v }
       
-      s.docs.getter_filter :license_file do |v|
+      s.docs.read_filter :license_file do |v|
         v or find_file('{licen{c,s}e,copying}{.*,}').freeze
       end
-      s.docs.getter_filter(:license) { s.docs.license_file }
-      s.docs.setter_filter(:license) { |v| s.docs.license_file = v }
+      s.docs.read_filter(:license) { s.docs.license_file }
+      s.docs.write_filter(:license) { |v| s.docs.license_file = v }
       
-      s.docs.getter_filter :markup do |v|
+      s.docs.read_filter :markup do |v|
         readme = s.docs.readme
         if v.nil? and readme
           case File.extname(readme).downcase
@@ -247,23 +286,23 @@ module Burke
         end
       end
       
-      s.test.getter_filter :test_files do |v|
+      s.test.read_filter :test_files do |v|
         v or Dir['test/**/{*_{test,tc},{test,tc}_*}.rb'].freeze
       end
       
-      s.rspec.getter_filter :options_file do |v|
-        v or find_file('.specopts').freeze
+      s.rspec.read_filter :options_file do |v|
+        v or find_file('{{spec/,}{spec.opts,.specopts}}').freeze
       end
       
-      s.rspec.getter_filter :color do |v|
+      s.rspec.read_filter :color do |v|
         v.nil? ? true : v
       end
       
-      s.rspec.getter_filter :spec_files do |v|
+      s.rspec.read_filter :spec_files do |v|
         v or Dir['spec/**/*_spec.rb'].freeze
       end
       
-      s.rspec.setter_filter(:ruby_opts) { |v| [*v] }
+      s.rspec.write_filter(:ruby_opts) { |v| [*v] }
       
       return s
     end

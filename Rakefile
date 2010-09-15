@@ -10,7 +10,10 @@ Burke.setup do |s|
   s.email = 'dismal.denizen@gmail.com'
   s.homepage = "http://github.com/dismaldenizen/burke"
   
-  s.dependencies.rake '~> 0.8.7'
+  s.dependencies do |d|
+    d.rake = '~> 0.8.7'
+    d.hashie = '~> 0.4.0'
+  end
   
   s.has_rdoc = true
   
