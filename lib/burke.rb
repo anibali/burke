@@ -146,6 +146,7 @@ module Burke
         end
         
         begin
+          require 'rcov'
           require 'spec/rake/verify_rcov'
           
           desc "Run specs with RCov"
