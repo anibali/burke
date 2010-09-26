@@ -199,7 +199,7 @@ module Burke
         @base_gemspec = Gem::Specification.new
         
         attrs = Gem::Specification.attribute_names
-        attrs -= [:dependencies]
+        attrs -= [:dependencies, :development_dependencies]
         attrs += [:author]
         
         attrs.each do |attr|
@@ -207,8 +207,12 @@ module Burke
           @base_gemspec.send("#{attr}=", value) if value
         end
         
-        @settings.dependencies.each do |gem, version|
-          @base_gemspec.add_dependency gem.to_s, version
+        @settings.dependencies.each do |gem, requirements|
+          @base_gemspec.add_dependency gem.to_s, *requirements
+        end
+        
+        @settings.development_dependencies.each do |gem, requirements|
+          @base_gemspec.add_development_dependency gem.to_s, *requirements
         end
       end
       
@@ -222,13 +226,47 @@ module Burke
     def create_settings
       # TODO: put default values in getter filters
       s = Smash.new
-      s.dependencies!
       s.docs!
       s.rspec!.rcov!
       s.test!
       s.gems = GemSettings.new
       s.clean = []
       s.clobber = []
+      
+      s.read_filter :dependencies do |v|
+        if v.nil?
+          s.dependencies = Smash.new
+          v = s.dependencies
+          begin
+            require 'bundler'
+            bundler = Bundler.load
+            deps = bundler.dependencies_for(:runtime)
+            if deps.empty?
+              deps = bundler.dependencies_for(:default)
+            end
+            deps.each do |d|
+              v[d.name] = d.requirement.to_s
+            end
+          rescue
+          end
+        end
+        v
+      end
+      
+      s.read_filter :development_dependencies do |v|
+        if v.nil?
+          s.development_dependencies = Smash.new
+          v = s.development_dependencies
+          begin
+            require 'bundler'
+            Bundler.load.dependencies_for(:development).each do |d|
+              v[d.name] = d.requirement.to_s
+            end
+          rescue
+          end
+        end
+        v
+      end
       
       s.read_filter :files do |v|
         if v.nil?
