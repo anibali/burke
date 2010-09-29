@@ -8,7 +8,7 @@ def mock_burke_setup
       alias :old_setup :setup
       
       def setup
-        @test_settings = create_settings
+        @test_settings = Burke::Settings.new
         yield @test_settings
       end
     end

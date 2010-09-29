@@ -3,16 +3,20 @@ require 'burke'
 
 Burke.enable_all
 
-Burke.setup do |s|
-  s.name = 'burke'
-  s.summary = 'Helper for creating nice and clean Rake files'
-  s.author = 'Aiden Nibali'
-  s.email = 'dismal.denizen@gmail.com'
-  s.homepage = "http://github.com/dismaldenizen/burke"
+Burke.setup do
+  name      'burke'
+  summary   'Helper for creating nice and clean Rake files'
+  author    'Aiden Nibali'
+  email     'dismal.denizen@gmail.com'
+  homepage  'http://github.com/dismaldenizen/burke'
   
-  s.has_rdoc = true
+  has_rdoc  true
   
-  s.clean = %w[.yardoc]
-  s.clobber = %w[pkg doc html]
+  rspec do
+    rcov.threshold 40.43
+  end
+  
+  clean     %w[.yardoc]
+  clobber   %w[pkg doc html]
 end
 

@@ -1,74 +1,144 @@
 require 'rubygems'
 require 'rake'
-require 'hashie'
-
-class Smash < Hashie::Mash
-  def initialize *args
-    super
-    @read_filters = {}
-    @write_filters = {}
-  end
-  
-  def method_missing name, *args
-    key = convert_key(name)
-    if key? key or @read_filters.key? key
-      value = self[key]
-      yield value if block_given?
-      value
-    else
-      super
-    end
-  end
-  
-  def [](key)
-    filter = @read_filters[convert_key(key)]
-    value = super(key)
-    filter.nil? ? value : filter[value]
-  end
-  
-  def []=(key, value)
-    filter = @write_filters[convert_key(key)]
-    value = filter[value] if filter
-    super(key, value)
-  end
-  
-  def read_filter key, &block
-    key = convert_key(key)
-    @read_filters[key] = block
-  end
-  
-  def write_filter key, &block
-    @write_filters[convert_key(key)] = block
-  end
-end
+require 'burke/holder'
 
 module Burke
   VERSION = File.read(File.join(File.dirname(File.dirname(__FILE__)), 'VERSION'))
-  ALL_TASKS = [:clean, :yard, :rdoc, :rspec, :rspec_rcov, :gems, :install, :test]
+  TASK_DEFINITIONS = {}
+  #TODO: remove this
+  %w[yard rdoc gems install].each do |name|
+    TASK_DEFINITIONS[name] = proc {}
+  end
+  
+  class Settings < Holder ; end
+  
+  def self.define_task group_name, &block
+    group_name = String(group_name)
+    TASK_DEFINITIONS[group_name] = block
+  end
+end
+
+require 'burke/tasks/rspec'
+require 'burke/tasks/test'
+require 'burke/tasks/clean'
+
+module Burke
   @tasks = []
+  
+  class DocSettings < Holder
+    field 'files'
+    
+    field 'readme_file' do
+      find_file('readme{.*,}').freeze
+    end
+    
+    field 'license_file' do
+      find_file('{licen{c,s}e,copying}{.*,}').freeze
+    end
+    
+    field 'markup' do
+      case File.extname(readme_file).downcase
+      when '.rdoc'
+        'rdoc'
+      when '.md', '.markdown'
+        'markdown'
+      when '.textile'
+        'textile'
+      end.freeze
+    end
+    
+    private
+    def find_file pattern
+      files = Dir.glob(pattern, File::FNM_CASEFOLD)
+      files.find { |f| File.readable? f and File.file? f }
+    end
+  end
+  
+  class DependencySettings < Holder
+  end
+  
+  class Settings < Holder
+    fields *(Gem::Specification.attribute_names - [:dependencies, :development_dependencies])
+    fields *%w[author docs test rspec gems clean clobber]
+    
+    field :dependencies do
+      dependencies = (self.dependencies = DependencySettings.new)
+      begin
+        require 'bundler'
+        bundler = Bundler.load
+        deps = bundler.dependencies_for(:runtime)
+        if deps.empty?
+          deps = bundler.dependencies_for(:default)
+        end
+        deps.each do |d|
+          dependencies[d.name] = d.requirement.to_s
+        end
+      rescue
+      end
+      dependencies
+    end
+    
+    field :development_dependencies do
+      dev_deps = (self.development_dependencies = DependencySettings.new)
+      begin
+        require 'bundler'
+        Bundler.load.dependencies_for(:development).each do |d|
+          dev_deps[d.name] = d.requirement.to_s
+        end
+      rescue
+      end
+      dev_deps
+    end
+    
+    field(:rakefile_file) { find_file('rakefile').freeze }
+    field(:version_file) { find_file('version{.*,}').freeze }
+    
+    field(:version) { File.read(version_file).strip.freeze if version_file }
+    
+    field :files do
+      fs = Dir['{lib,spec,bin}/**/*']
+      fs << docs.readme_file
+      fs << docs.license_file
+      fs << version_file
+      fs << rakefile_file
+      fs.compact.freeze
+    end
+    
+    def initialize *args
+      super
+      self.docs = DocSettings.new
+      self.gems = GemSettings.new
+    end
+    
+    private
+    def find_file pattern
+      files = Dir.glob(pattern, File::FNM_CASEFOLD)
+      files.find { |f| File.readable? f and File.file? f }
+    end
+  end
   
   class << self
     def enable_all opts={}
-      @tasks = ALL_TASKS.dup
+      @enabled_tasks = TASK_DEFINITIONS.keys
       disable opts[:except] if opts[:except]
     end
     
     def enable *args
-      @tasks.concat([*args].map {|t| t.to_sym})
-      @tasks.uniq!
+      @enabled_tasks.concat([*args].map {|t| t.to_sym})
+      @enabled_tasks.uniq!
     end
     
     def disable *args
       dis = [*args].map {|t| t.to_sym}
-      @tasks.reject! {|t| dis.include? t}
+      @enabled_tasks.reject! {|t| dis.include? t}
     end
     
-    def setup
-      @settings = create_settings
+    def setup &block
+      @settings = Settings.new
       
-      yield @settings
+      @settings.instance_exec @settings, &block
       
-      if @tasks.include? :gems and GemTaskManager::TASKS.empty?
+      if task_enabled? :gems and GemTaskManager::TASKS.empty?
         @settings.gems.platform 'ruby'
       end
       
@@ -77,20 +147,23 @@ module Burke
       return @settings
     end
     
+    def task_enabled? name
+      @enabled_tasks.include? String(name)
+    end
+    
     def generate_tasks
-      begin
-        require 'rake/clean'
-        CLEAN.include(*@settings.clean) if @settings.clean
-        CLOBBER.include(*@settings.clobber) if @settings.clobber
-      rescue LoadError
-      end if @tasks.include? :clean
+      TASK_DEFINITIONS.each do |group_name, block|
+        if task_enabled? group_name
+          block.call @settings
+        end
+      end
       
       unless @settings.docs.files
         d = @settings.docs
         fl = FileList.new
         fl.include "lib/**/*.rb"
-        fl.include d.readme if d.readme
-        fl.include d.license if d.license
+        fl.include d.readme_file if d.readme_file
+        fl.include d.license_file if d.license_file
         d.files = fl.to_a
       end
       
@@ -99,15 +172,15 @@ module Burke
         opts = []
         d = @settings.docs
         opts << "--title" << "#{@settings.name} #{@settings.version}"
-        opts << "--readme" << d.readme if d.readme
+        opts << "--readme" << d.readme_file if d.readme_file
         opts << "--markup" << d.markup if d.markup
-        extra_files = [d.license].compact
+        extra_files = [d.license_file].compact
         opts << "--files" << extra_files.join(',') unless extra_files.empty?
         YARD::Rake::YardocTask.new 'yard' do |t|
           t.options = opts
         end
       rescue LoadError
-      end if @tasks.include? :yard
+      end if task_enabled? :yard
       
       begin
         require 'rake/rdoctask'
@@ -115,65 +188,19 @@ module Burke
         Rake::RDocTask.new 'rdoc' do |r|
           r.rdoc_files.include d.files
           r.title = "#{@settings.name} #{@settings.version}"
-          r.main = d.readme if d.readme
+          r.main = d.readme_file if d.readme_file
         end
       rescue LoadError
-      end if @tasks.include? :rdoc
+      end if task_enabled? :rdoc
       
       if @settings.has_rdoc
         d = @settings.docs
         (@settings.extra_rdoc_files ||= []).concat d.files
         opts = []
         opts << "--title" << "#{@settings.name} #{@settings.version}"
-        opts << "--main" << d.readme if d.readme
+        opts << "--main" << d.readme_file if d.readme_file
         @settings.rdoc_options ||= opts
       end
-      
-      begin
-        require 'spec/rake/spectask'
-        r = @settings.rspec
-        opts = []
-        if r.options_file
-          opts << "--options" << r.options_file
-        else
-          opts << "--colour" if r.color
-          opts << "--format" << r.format if r.format
-        end
-        Spec::Rake::SpecTask.new 'spec' do |t|
-          t.spec_files = r.spec_files
-          t.spec_opts = opts
-          t.ruby_opts = r.ruby_opts if r.ruby_opts
-        end
-        
-        begin
-          require 'rcov'
-          require 'spec/rake/verify_rcov'
-          
-          desc "Run specs with RCov"
-          Spec::Rake::SpecTask.new('spec:rcov') do |t|
-            t.spec_files = r.spec_files
-            t.spec_opts = opts
-            t.rcov = true
-            t.rcov_opts = ['--exclude', 'spec']
-          end
-          
-          desc "Run specs with RCov and verify code coverage"
-          RCov::VerifyTask.new('spec:rcov:verify' => 'spec:rcov') do |t|
-            t.threshold = r.rcov.threshold
-            t.index_html = 'coverage/index.html'
-          end if r.rcov.threshold
-        rescue LoadError
-        end if @tasks.include? :rspec_rcov
-      rescue LoadError
-      end if @tasks.include? :rspec and !@settings.rspec.spec_files.empty?
-      
-      begin
-        require 'rake/testtask'
-        Rake::TestTask.new do |t|
-          t.test_files = @settings.test.test_files
-        end
-      rescue LoadError
-      end if @tasks.include? :test and !@settings.test.test_files.empty?
       
       begin
         settings.gems.individuals.each do |conf|
@@ -185,13 +212,13 @@ module Burke
           task(:gem => GemTaskManager.task_for_this_platform.task_name)
         end
       rescue LoadError
-      end if @tasks.include? :gems
+      end if task_enabled? :gems
       
       begin
         require 'rubygems/installer'
         GemTaskManager.install_task unless GemTaskManager::TASKS.empty?
       rescue LoadError
-      end if @tasks.include? :install
+      end if task_enabled? :install
     end
     
     def base_gemspec
@@ -221,139 +248,6 @@ module Burke
     
     def settings
       @settings
-    end
-    
-    def create_settings
-      # TODO: put default values in getter filters
-      s = Smash.new
-      s.docs!
-      s.rspec!.rcov!
-      s.test!
-      s.gems = GemSettings.new
-      s.clean = []
-      s.clobber = []
-      
-      s.read_filter :dependencies do |v|
-        if v.nil?
-          s.dependencies = Smash.new
-          v = s.dependencies
-          begin
-            require 'bundler'
-            bundler = Bundler.load
-            deps = bundler.dependencies_for(:runtime)
-            if deps.empty?
-              deps = bundler.dependencies_for(:default)
-            end
-            deps.each do |d|
-              v[d.name] = d.requirement.to_s
-            end
-          rescue
-          end
-        end
-        v
-      end
-      
-      s.read_filter :development_dependencies do |v|
-        if v.nil?
-          s.development_dependencies = Smash.new
-          v = s.development_dependencies
-          begin
-            require 'bundler'
-            Bundler.load.dependencies_for(:development).each do |d|
-              v[d.name] = d.requirement.to_s
-            end
-          rescue
-          end
-        end
-        v
-      end
-      
-      s.read_filter :files do |v|
-        if v.nil?
-          v = Dir['{lib,spec,bin}/**/*']
-          v << s.docs.readme_file
-          v << s.docs.license_file
-          v << s.version_file
-          v << s.rakefile_file
-          v.compact.freeze
-        else
-          v
-        end
-      end
-      
-      s.read_filter :rakefile_file do |v|
-        v or find_file('rakefile').freeze
-      end
-      
-      s.read_filter :version_file do |v|
-        v or find_file('version{.*,}').freeze
-      end
-      
-      s.read_filter :version do |v|
-        if v.nil? and s.version_file
-          File.read(s.version_file).strip.freeze
-        else
-          v
-        end
-      end
-      
-      s.docs.read_filter :readme_file do |v|
-        v or find_file('readme{.*,}').freeze
-      end
-      s.docs.read_filter(:readme) { s.docs.readme_file }
-      s.docs.write_filter(:readme) { |v| s.docs.readme_file = v }
-      
-      s.docs.read_filter :license_file do |v|
-        v or find_file('{licen{c,s}e,copying}{.*,}').freeze
-      end
-      s.docs.read_filter(:license) { s.docs.license_file }
-      s.docs.write_filter(:license) { |v| s.docs.license_file = v }
-      
-      s.docs.read_filter :markup do |v|
-        readme = s.docs.readme
-        if v.nil? and readme
-          case File.extname(readme).downcase
-          when '.rdoc'
-            'rdoc'
-          when '.md', '.markdown'
-            'markdown'
-          when '.textile'
-            'textile'
-          end.freeze
-        else
-          v
-        end
-      end
-      
-      s.test.read_filter :test_files do |v|
-        v or Dir['test/**/{*_{test,tc},{test,tc}_*}.rb'].freeze
-      end
-      
-      s.rspec.read_filter :options_file do |v|
-        v or find_file('{{spec/,}{spec.opts,.specopts}}').freeze
-      end
-      
-      s.rspec.read_filter :color do |v|
-        v.nil? ? true : v
-      end
-      
-      s.rspec.read_filter :spec_files do |v|
-        v or Dir['spec/**/*_spec.rb'].freeze
-      end
-      
-      s.rspec.write_filter(:ruby_opts) { |v| [*v] }
-      
-      return s
-    end
-    
-    private
-    def readable_file? file
-      File.readable? file and File.file? file
-    end
-    
-    def find_file pattern
-      files = Dir.glob(pattern, File::FNM_CASEFOLD)
-      files.find { |f| readable_file? f }
     end
   end
   
