@@ -38,6 +38,7 @@ module Burke
       def field name, &block
         name = String(name)
         @fields << name
+        @fields.uniq!
         @defaults[name] = block if block_given?
       end
       

@@ -10,13 +10,12 @@ Burke.setup do
   email     'dismal.denizen@gmail.com'
   homepage  'http://github.com/dismaldenizen/burke'
   
-  has_rdoc  true
-  
-  rspec do
-    rcov.threshold 40.43
-  end
-  
   clean     %w[.yardoc]
   clobber   %w[pkg doc html]
+  
+  dependencies do
+    rubygems  '1.3.6'
+    rake      '0.8.7'
+  end
 end
 

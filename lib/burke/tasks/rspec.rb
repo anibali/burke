@@ -1,7 +1,7 @@
 module Burke
   Settings.field(:rspec) { self.rspec = RSpecSettings.new }
   
-  define_task 'rspec' do |s|
+  define_task 'spec' do |s|
     begin
       require 'spec/rake/spectask'
       
@@ -17,7 +17,7 @@ module Burke
     end unless s.rspec.files.empty?
   end
   
-  define_task 'rspec:rcov' do |s|
+  define_task 'spec:rcov' do |s|
     begin
       require 'spec/rake/spectask'
       require 'rcov'
@@ -40,7 +40,7 @@ module Burke
         t.index_html = 'coverage/index.html'
       end if r.rcov.threshold
     rescue LoadError
-    end if task_enabled? :rspec
+    end if task_enabled? :spec
   end
   
   def self.build_rspec_opts r

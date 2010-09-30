@@ -18,6 +18,7 @@ describe Burke do
       
       its(:version_file) { should eql 'VERSION' }
       its(:rakefile_file) { should eql 'Rakefile' }
+      its(:version) { should eql '1.2.3' }
       
       describe 'docs' do
         subject { @settings.docs }
