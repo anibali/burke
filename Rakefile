@@ -14,7 +14,6 @@ Burke.setup do
   clobber   %w[pkg doc html]
   
   dependencies do
-    rubygems  '1.3.6'
     rake      '0.8.7'
   end
 end
