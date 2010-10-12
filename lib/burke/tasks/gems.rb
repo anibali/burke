@@ -37,14 +37,14 @@ module Burke
       end
       
       task(name) do
-        conf.before.call spec unless conf.before.nil?
+        conf.before_build.call spec unless conf.before_build.nil?
         builder = Gem::Builder.new(spec)
         builder.build
         verbose true do
           mkdir pkg_dir unless File.exists? pkg_dir
           mv conf.gem_file, File.join(pkg_dir, conf.gem_file)
         end
-        conf.after.call spec unless conf.after.nil?
+        conf.after_build.call spec unless conf.after_build.nil?
       end
       
       TASKS[spec.platform.to_s] = conf
@@ -77,14 +77,12 @@ module Burke
     end
   end
   
-  class GemSettings
-    attr_accessor :package_dir, :individuals
+  class GemSettings < Holder
+    field(:package_dir) { 'pkg' }
     
-    def initialize
-      @package_dir = 'pkg'
-    end
+    attr_reader :individuals
     
-    def platform plaf
+    def add_platform plaf
       conf = IndividualGemSettings.new plaf
       @individuals ||= []
       @individuals << conf
@@ -92,7 +90,7 @@ module Burke
       conf
     end
     
-    class IndividualGemSettings
+    class IndividualGemSettings < Holder
       attr_reader :platform
       
       def initialize plaf
@@ -117,12 +115,12 @@ module Burke
         Burke.settings.gems.package_dir
       end
       
-      def before &block
+      def before_build &block
         @before = block if block_given?
         @before
       end
       
-      def after &block
+      def after_build &block
         @after = block if block_given?
         @after
       end

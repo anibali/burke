@@ -25,26 +25,27 @@ Here is a sample Rakefile using Burke.
   Burke.enable_all
   
   # Give Burke some data about the project
-  Burke.setup do |s|
-    s.name = 'foo'
-    s.version = '1.2.3'
-    s.summary = 'an example Ruby library with extra foo'
+  Burke.setup do
+    name        'foo'
+    version     '1.2.3'
+    summary     'An example Ruby library with extra foo'
     
-    s.docs do |d|
-      d.markup = 'rdoc'
-    end
+    docs.markup 'rdoc'
     
-    s.gems do |g|
-      g.platform 'ruby'
+    clean       %w[.yardoc]
+    clobber     %w[pkg doc html coverage]
+    
+    gems do
+      add_platform  'ruby'
       
-      g.platform 'x86-linux' do |p|
-        p.before do |s|
+      add_platform  'x86-linux' do
+        before_build do |spec|
           cp 'native/libfoo-x86-linux.so', 'lib/libfoo.so'
-          s.add_dependency 'ffi'
-          s.files += ['lib/libfoo.so']
+          spec.add_dependency 'ffi'
+          spec.files += ['lib/libfoo.so']
         end
         
-        p.after do
+        after_build do
           rm 'lib/libfoo.so'
         end
       end

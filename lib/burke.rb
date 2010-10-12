@@ -120,7 +120,7 @@ module Burke
       @settings.instance_exec @settings, &block
       
       if task_enabled? :gems and GemTaskManager::TASKS.empty?
-        @settings.gems.platform 'ruby'
+        @settings.gems.add_platform 'ruby'
       end
       
       # Generate tasks

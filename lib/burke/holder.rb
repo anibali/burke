@@ -25,6 +25,8 @@ module Burke
   class Holder < Hash
     class CircularReadError < RuntimeError ; end
     
+    def holder_instance_exec? ; true ; end
+    
     class << self
       attr_accessor :defaults
       
@@ -114,7 +116,7 @@ module Burke
           if args.empty?
             v = self[key]
             if block_given?
-              if v.is_a? Holder
+              if v.respond_to? 'holder_instance_exec?' and v.holder_instance_exec?
                 v.instance_exec v, &block
               else
                 yield v
