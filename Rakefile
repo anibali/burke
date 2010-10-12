@@ -11,7 +11,7 @@ Burke.setup do
   homepage  'http://github.com/dismaldenizen/burke'
   
   clean     %w[.yardoc]
-  clobber   %w[pkg doc html]
+  clobber   %w[pkg doc html coverage]
   
   dependencies do
     rake      '0.8.7'
