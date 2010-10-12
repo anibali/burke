@@ -16,5 +16,7 @@ Burke.setup do
   dependencies do
     rake      '0.8.7'
   end
+  
+  rspec.rcov.failure_threshold = 42.6
 end
 
