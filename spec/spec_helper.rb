@@ -5,12 +5,10 @@ require 'rspec/core'
 def mock_burke_setup
   Burke.module_eval do
     class << self
-      attr_reader :test_settings
-      alias :old_setup :setup
+      alias :old_settings :settings
       
-      def setup
-        @test_settings = Burke::Settings.new
-        yield @test_settings
+      def settings
+        @settings ||= Burke::Settings.new
       end
     end
   end
@@ -19,7 +17,7 @@ end
 def unmock_burke_setup
   Burke.module_eval do
     class << self
-      alias :setup :old_setup
+      alias :settings :old_settings
     end
   end
 end

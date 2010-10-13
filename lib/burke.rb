@@ -97,8 +97,6 @@ module Burke
   end
   
   class << self
-    attr_reader :settings
-    
     def enable_all opts={}
       @enabled_tasks = TASK_DEFINITIONS.keys
       disable *opts[:except] if opts[:except]
@@ -114,23 +112,25 @@ module Burke
       @enabled_tasks.reject! {|t| dis.include? t}
     end
     
+    def settings
+      @settings ||= Settings.new
+    end
+    
     def setup &block
-      @settings = Settings.new
-      
-      @settings.instance_exec @settings, &block
+      settings.instance_exec settings, &block
       
       if task_enabled? :gems and GemTaskManager::TASKS.empty?
-        @settings.gems.add_platform 'ruby'
+        settings.gems.add_platform 'ruby'
       end
       
       # Generate tasks
       TASK_DEFINITIONS.each do |group_name, block|
         if task_enabled? group_name
-          block.call @settings
+          block.call settings
         end
       end
       
-      return @settings
+      return settings
     end
     
     def task_enabled? name
@@ -146,15 +146,15 @@ module Burke
         attrs += [:author]
         
         attrs.each do |attr|
-          value = @settings.send(attr)
+          value = settings.send(attr)
           @base_gemspec.send("#{attr}=", value) if value
         end
         
-        @settings.dependencies.each do |gem, requirements|
+        settings.dependencies.each do |gem, requirements|
           @base_gemspec.add_dependency gem.to_s, *requirements
         end
         
-        @settings.development_dependencies.each do |gem, requirements|
+        settings.development_dependencies.each do |gem, requirements|
           @base_gemspec.add_development_dependency gem.to_s, *requirements
         end
       end

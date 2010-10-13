@@ -1,20 +1,21 @@
+require 'spec_helper'
+
 DIR = File.dirname(File.expand_path(__FILE__))
-require File.join(DIR, 'spec_helper')
 
 describe Burke do
   describe 'settings' do
-    context 'for example of a conventional project' do
+    context 'for example of a simple project' do
       before do
         @old_pwd = Dir.pwd
-        Dir.chdir File.join(DIR, 'conventional_project')
+        Dir.chdir File.join(DIR, 'simple_project')
         mock_burke_setup
-        eval(File.read('Rakefile'))
-        @settings = Burke.test_settings
+        load 'Rakefile'
+        @settings = Burke.settings
       end
       
       subject { @settings }
       
-      its(:name) { should eql 'conventional_project' }
+      its(:name) { should eql 'simple_project' }
       
       its(:version_file) { should eql 'VERSION' }
       its(:rakefile_file) { should eql 'Rakefile' }
