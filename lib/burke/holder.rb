@@ -51,6 +51,10 @@ module Burke
       def field_exists? name
         @fields.include? name
       end
+      
+      def [](hash)
+        new.merge hash
+      end
     end
     
     def initialize *args, &block
@@ -101,16 +105,48 @@ module Burke
       super
     end
     
+    def merge! other
+      other.each do |k, v|
+        self[k] ||= v
+      end
+      
+      nil
+    end
+    
+    def merge other
+      holder = self.class.new
+      
+      self.each do |k, v|
+        holder[k] = v
+      end
+      
+      other.each do |k, v|
+        holder[k] ||= v
+      end
+      
+      holder
+    end
+    
+    def delete key
+      super normalize_key(key)
+    end
+    
     def method_missing name, *args, &block
       base, ending = *String(name).match(/(\w*)([!?=]?)/).to_a[1..-1]
       key = normalize_key(base)
       case ending
       when '?'
-        assert_field_exists! key
-        key? key
+        if field_exists? key
+          !!self[key]
+        else
+          super
+        end
       when '='
-        assert_field_exists! key
-        self[key] = *args
+        if field_exists? key
+          self[key] = *args
+        else
+          super
+        end
       when ''
         if field_exists? key
           if args.empty?
