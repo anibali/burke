@@ -24,6 +24,7 @@ require 'burke/tasks/gems'
 
 module Burke
   @tasks = []
+  @enabled_tasks = TASK_DEFINITIONS.keys
   
   class DependencySettings < Holder
     def self.field_exists? name ; true ; end
@@ -100,6 +101,11 @@ module Burke
     def enable_all opts={}
       @enabled_tasks = TASK_DEFINITIONS.keys
       disable *opts[:except] if opts[:except]
+    end
+    
+    def disable_all opts={}
+      @enabled_tasks = []
+      enable *opts[:except] if opts[:except]
     end
     
     def enable *args

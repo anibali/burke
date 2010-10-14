@@ -11,21 +11,6 @@ module Burke
     end
   end
   
-  define_task 'spec:rcov' do |s|
-    begin
-      require 'rspec/core/rake_task'
-      desc  'Run RSpec code examples with RCov'
-      RSpec::Core::RakeTask.new 'spec:rcov' do |t|
-        build_spec_task t, s.rspec
-        t.rcov = true
-        t.rcov_opts =  ['--failure-threshold', s.rspec.rcov.failure_threshold]
-        # TODO: improve with more intelligent project layout guessing
-        t.rcov_opts << %[-Ilib -Ispec --include "lib/" --exclude "gems/,spec/"]
-      end
-    rescue LoadError
-    end
-  end
-  
   def self.build_spec_task task, rspec_settings
     t = task
     r = rspec_settings

@@ -1,8 +1,6 @@
 $LOAD_PATH << File.join(File.dirname(File.expand_path(__FILE__)), 'lib')
 require 'burke'
 
-Burke.enable_all
-
 Burke.setup do
   name      'burke'
   summary   'Helper for creating nice, clean Rake files'
