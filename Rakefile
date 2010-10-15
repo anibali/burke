@@ -11,6 +11,17 @@ Burke.setup do
   clean     %w[.yardoc]
   clobber   %w[pkg doc html coverage]
   
-  rspec.rcov.failure_threshold = 42.6
+  rspec.rcov.failure_threshold = 74
+end
+
+desc  "Run RSpec code examples with RCov"
+RSpec::Core::RakeTask.new('spec:rcov:verify') do |t|
+  t.rcov = true
+  t.rcov_opts = [
+    '--failure-threshold', Burke.settings.rspec.rcov.failure_threshold,
+    '-Ilib',
+    '--exclude', 'spec/,Rakefile',
+    '--no-html'
+  ]
 end
 
