@@ -4,10 +4,11 @@ module Burke
   define_task 'spec' do |s|
     begin
       require 'rspec/core/rake_task'
-      RSpec::Core::RakeTask.new 'spec' do |t|
-        build_spec_task t, s.rspec
-      end
     rescue LoadError
+      raise "'rspec' gem is not available"
+    end
+    RSpec::Core::RakeTask.new 'spec' do |t|
+      build_spec_task t, s.rspec
     end
   end
   

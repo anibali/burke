@@ -2,13 +2,13 @@ module Burke
   Settings.field(:test) { self.test = TestSettings.new }
   
   define_task 'test' do |s|
-    begin
-      require 'rake/testtask'
-      Rake::TestTask.new do |t|
-        t.test_files = s.test.files
-      end
-    rescue LoadError
-    end unless @settings.test.files.empty?
+    if @settings.test.files.empty?
+      raise "project doesn't seem to contain test files"
+    end
+    require 'rake/testtask'
+    Rake::TestTask.new do |t|
+      t.test_files = s.test.files
+    end
   end
   
   class TestSettings < Holder

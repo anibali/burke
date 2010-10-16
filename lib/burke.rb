@@ -130,10 +130,43 @@ module Burke
         settings.gems.add_platform 'ruby'
       end
       
+      enabled = []
+      disabled = []
+      
       # Generate tasks
-      TASK_DEFINITIONS.each do |group_name, block|
-        if task_enabled? group_name
-          block.call settings
+      TASK_DEFINITIONS.each do |name, block|
+        if task_enabled? name
+          begin
+            block.call settings
+            enabled << [name, nil]
+          rescue Exception => ex
+            disabled << [name, ex.message]
+          end
+        else
+          disabled << [name, "disabled by project developer"]
+        end
+      end
+      
+      desc 'List enabled and disabled tasks'
+      task 'tasks' do
+        puts '+---------+'
+        puts '| Enabled |'
+        puts '+---------+'
+        width = enabled.map {|a| a[0].length}.sort.last
+        enabled.sort_by {|a| a[0]}.each do |name, reason|
+          line = "+ #{name.ljust(width)}"
+          line << " (#{reason})" if reason
+          puts line
+        end
+        puts
+        puts '+----------+'
+        puts '| Disabled |'
+        puts '+----------+'
+        width = disabled.map {|a| a[0].length}.sort.last
+        disabled.sort_by {|a| a[0]}.each do |name, reason|
+          line = "- #{name.ljust(width)}"
+          line << " (#{reason})" if reason
+          puts line
         end
       end
       
