@@ -5,7 +5,8 @@ module Burke
       desc 'Release a new version of this project'
       task 'release' do |t|
         g = Git.open '.'
-        unless g.status.to_a.empty?
+        st = g.status
+        unless st.added.empty? and st.changed.empty? and st.deleted.empty? and st.untracked.empty?
           puts "Please commit changes with Git before releasing."
         else
           release_type = 0
