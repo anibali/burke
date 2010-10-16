@@ -21,6 +21,7 @@ require 'burke/tasks/docs'
 require 'burke/tasks/rdoc'
 require 'burke/tasks/yard'
 require 'burke/tasks/gems'
+require 'burke/tasks/release'
 
 module Burke
   @tasks = []
