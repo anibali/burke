@@ -12,7 +12,7 @@ module Burke
     task 'release' do |t|
       g = Git.open '.'
       st = g.status
-      unless st.added.empty? and st.changed.empty? and st.deleted.empty? and st.untracked.empty?
+      unless st.added.empty? and st.changed.empty? and st.deleted.empty?
         puts "Please commit changes with Git before releasing."
       else
         release_type = 0
