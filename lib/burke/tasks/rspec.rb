@@ -7,8 +7,45 @@ module Burke
     rescue LoadError
       raise "'rspec' gem is not available"
     end
+    
     RSpec::Core::RakeTask.new 'spec' do |t|
       build_spec_task t, s.rspec
+    end
+  end
+  
+  define_task 'spec:rcov' do |s|
+    begin
+      require 'rspec/core/rake_task'
+    rescue LoadError
+      raise "'rspec' gem is not available"
+    end
+    
+    desc "Run RSpec code examples and generate full RCov report"
+    RSpec::Core::RakeTask.new('spec:rcov') do |t|
+      t.rcov = true
+      t.rcov_opts = [
+        '-Ilib',
+        '--exclude', "'spec/,#{s.rakefile_file}'",
+      ]
+    end
+  end
+  
+  define_task 'spec:rcov:verify' do |s|
+    begin
+      require 'rspec/core/rake_task'
+    rescue LoadError
+      raise "'rspec' gem is not available"
+    end
+    
+    desc "Run RSpec code examples and verify RCov percentage"
+    RSpec::Core::RakeTask.new('spec:rcov:verify') do |t|
+      t.rcov = true
+      t.rcov_opts = [
+        '--failure-threshold', s.rspec.rcov.failure_threshold,
+        '-Ilib',
+        '--exclude', "'spec/,#{s.rakefile_file}'",
+        '--no-html'
+      ]
     end
   end
   
