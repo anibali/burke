@@ -6,19 +6,22 @@ module Burke
       GemTaskManager.add_task conf
     end
     
-    desc "Build gem for this platform"
-    task(:gem => GemTaskManager.task_for_this_platform.task_name)
+    t = GemTaskManager.task_for_this_platform
+    unless t.nil?
+      desc "Build gem for this platform"
+      task(:gem => t.task_name)
+    end
   end
   
   define_task 'install' => 'gems' do |s|
     require 'rubygems/installer'
-    unless GemTaskManager::TASKS.empty?
-      t = GemTaskManager.task_for_this_platform
+    
+    t = GemTaskManager.task_for_this_platform
+    raise "no gem task for this platform" if t.nil?
       
-      desc "Install gem for this platform"
-      task 'install' => [t.task_name] do
-        Gem::Installer.new(File.join(t.package_dir, t.gem_file)).install
-      end
+    desc "Install gem for this platform"
+    task 'install' => [t.task_name] do
+      Gem::Installer.new(File.join(t.package_dir, t.gem_file)).install
     end
   end
   

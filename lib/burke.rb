@@ -170,36 +170,43 @@ module Burke
       TaskDefinition::ALL.each do |name, td|
         if task_enabled? name
           begin
+            td.prerequisites.each do |prereq|
+              raise "prerequisite '#{prereq}' is disabled" unless task_enabled? prereq
+            end
             td.execute(settings)
             enabled << [name, nil]
           rescue Exception => ex
             disabled << [name, ex.message]
           end
         else
-          disabled << [name, "disabled by project developer"]
+          disabled << [name, "disabled by project developer(s)"]
         end
       end
       
-      desc 'List enabled and disabled tasks'
-      task 'tasks' do
-        puts '+---------+'
-        puts '| Enabled |'
-        puts '+---------+'
-        width = enabled.map {|a| a[0].length}.sort.last
-        enabled.sort_by {|a| a[0]}.each do |name, reason|
-          line = "+ #{name.ljust(width)}"
-          line << " (#{reason})" if reason
-          puts line
+      desc 'List Burke task groups'
+      task 'burke:tasks' do
+        unless enabled.empty?
+          puts ' ---------'
+          puts '  Enabled '
+          puts ' ---------'
+          width = enabled.map {|a| a[0].length}.sort.last
+          enabled.sort_by {|a| a[0]}.each do |name, reason|
+            line = "+ #{name.ljust(width)}"
+            line << " (#{reason})" if reason
+            puts line
+          end
+          puts
         end
-        puts
-        puts '+----------+'
-        puts '| Disabled |'
-        puts '+----------+'
-        width = disabled.map {|a| a[0].length}.sort.last
-        disabled.sort_by {|a| a[0]}.each do |name, reason|
-          line = "- #{name.ljust(width)}"
-          line << " (#{reason})" if reason
-          puts line
+        unless disabled.empty?
+          puts ' ----------'
+          puts '  Disabled '
+          puts ' ----------'
+          width = disabled.map {|a| a[0].length}.sort.last
+          disabled.sort_by {|a| a[0]}.each do |name, reason|
+            line = "- #{name.ljust(width)}"
+            line << " (#{reason})" if reason
+            puts line
+          end
         end
       end
       
