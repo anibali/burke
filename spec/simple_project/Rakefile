@@ -1,10 +1,8 @@
 require 'rubygems'
 require 'burke'
 
-Burke.enable_all
-
-Burke.setup do |s|
-  s.name    'simple_project'
-  s.summary 'A simple project which follows conventions'
+Burke.setup do
+  name    'simple_project'
+  summary 'A simple project which follows conventions'
 end
 
