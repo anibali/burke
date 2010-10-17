@@ -4,13 +4,46 @@ require 'burke/holder'
 
 module Burke
   VERSION = File.read(File.join(File.dirname(File.dirname(__FILE__)), 'VERSION'))
-  TASK_DEFINITIONS = {}
   
   class Settings < Holder ; end
   
-  def self.define_task group_name, &block
-    group_name = String(group_name)
-    TASK_DEFINITIONS[group_name] = block
+  class TaskDefinition
+    ALL = {}
+    
+    attr_reader :name, :block, :prerequisites
+    
+    def initialize *args, &block
+      a1, a2 = *args
+      name = nil
+      prereqs = nil
+      if a1.is_a? Hash
+        name, prereqs = *a1.entries[0]
+      else
+        name, prereqs = a1, a2
+      end
+      @name = String(name)
+      @prerequisites = [*prereqs].compact.map {|e| String(e)}
+      @block = block
+      ALL[@name] = self
+    end
+    
+    def execute(s)
+      unless @executed
+        execute_prerequisites(s)
+        @block.call(s)
+        @executed = true
+      end
+    end
+    
+    def execute_prerequisites(s)
+      @prerequisites.each do |prereq|
+        ALL[prereq].execute(s)
+      end
+    end
+  end
+  
+  def self.define_task *args, &block
+    TaskDefinition.new *args, &block
   end
 end
 
@@ -25,7 +58,7 @@ require 'burke/tasks/release'
 
 module Burke
   @tasks = []
-  @enabled_tasks = TASK_DEFINITIONS.keys
+  @enabled_tasks = TaskDefinition::ALL.keys
   
   class DependencySettings < Holder
     def self.field_exists? name ; true ; end
@@ -100,7 +133,7 @@ module Burke
   
   class << self
     def enable_all opts={}
-      @enabled_tasks = TASK_DEFINITIONS.keys
+      @enabled_tasks = TaskDefinition::ALL.keys
       disable *opts[:except] if opts[:except]
     end
     
@@ -134,10 +167,10 @@ module Burke
       disabled = []
       
       # Generate tasks
-      TASK_DEFINITIONS.each do |name, block|
+      TaskDefinition::ALL.each do |name, td|
         if task_enabled? name
           begin
-            block.call settings
+            td.execute(settings)
             enabled << [name, nil]
           rescue Exception => ex
             disabled << [name, ex.message]
