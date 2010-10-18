@@ -16,20 +16,38 @@ module Burke
         puts "Please commit changes with Git before releasing."
       else
         release_type = 0
-        until (1..3).include? release_type
+        until (1..4).include? release_type
           puts "Please select type of release:"
           puts "1. Major"
           puts "2. Minor"
           puts "3. Patch"
+          puts "4. Enter version manually"
           print "> "
           release_type = $stdin.gets.to_i
           puts
         end
         
         old_version = Gem::Version.new(s.version)
-        segments = old_version.segments
-        segments[release_type - 1] += 1
-        new_version = Gem::Version.new(segments.join('.'))
+        new_version = nil
+        
+        if release_type == 4
+          until new_version
+            print "Current version is #{old_version}. "
+            puts "Please enter a new version number:"
+            print "> "
+            new_version = $stdin.gets
+            if new_version.strip.empty?
+              new_version = nil
+            else
+              new_version = Gem::Version.new(new_version)
+            end
+            puts
+          end
+        else
+          segments = old_version.segments
+          segments[release_type - 1] += 1
+          new_version = Gem::Version.new(segments.join('.'))
+        end
         
         print "The VERSION file will be changed from containing '#{old_version}' "
         print "to '#{new_version}'. The changes will be commited to the Git "
@@ -37,20 +55,24 @@ module Burke
         puts
         
         continue = nil
-        until ['y', 'n'].include? continue
-          print "Continue? [yn] "
+        until ['y', 'n', 'yes', 'no'].include? continue
+          puts "Continue? [Y]es, [N]o"
+          print "> "
           continue = $stdin.gets.strip.downcase
+          puts
         end
         
-        if continue == 'y'
+        if %w[yes y].include? continue
           open 'VERSION', 'w' do |f|
             f.puts new_version.to_s
           end
           
-          g.commit_all "Version bumped to #{new_version}"
-          g.add_tag "v#{new_version}"
-          # TODO: Test following code and replace above line with it:
-          # g.lib.send(:command, 'tag', ['-a', "v#{new_version}", '-m', "'version #{new_version}'"])
+          g.commit_all "version bumped to #{new_version}"
+          g.lib.send(:command, 'tag', ['-a', "v#{new_version}", '-m', "version #{new_version}"])
+          
+          puts "Version updated."
+        else
+          puts "Version not updated."
         end
       end
     end
