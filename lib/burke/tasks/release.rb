@@ -49,6 +49,8 @@ module Burke
           
           g.commit_all "Version bumped to #{new_version}"
           g.add_tag "v#{new_version}"
+          # TODO: Test following code and replace above line with it:
+          # g.lib.send(:command, 'tag', ['-a', "v#{new_version}", '-m', "'version #{new_version}'"])
         end
       end
     end
