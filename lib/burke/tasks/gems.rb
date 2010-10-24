@@ -30,11 +30,11 @@ module Burke
     
     attr_reader :individuals
     
-    def add_platform plaf
+    def add_platform plaf, &block
       conf = IndividualGemSettings.new plaf
       @individuals ||= []
       @individuals << conf
-      yield conf if block_given?
+      conf.instance_exec conf, &block if block_given?
       conf
     end
   end
