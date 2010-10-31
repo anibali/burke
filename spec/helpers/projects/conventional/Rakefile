@@ -1,0 +1,8 @@
+require 'rubygems'
+require 'burke'
+
+Burke.setup do
+  name    'conventional'
+  summary 'A conventional project'
+end
+
