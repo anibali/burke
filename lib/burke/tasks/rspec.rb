@@ -22,9 +22,10 @@ module Burke
     
     desc "Run RSpec code examples and generate full RCov report"
     RSpec::Core::RakeTask.new('spec:rcov') do |t|
+      require 'shellwords'
       t.rcov = true
       t.rcov_opts = [
-        '-Ilib',
+        "-I#{%w[lib spec].map {|e| File.expand_path(e).shellescape }.join ':'}",
         '--exclude', "'spec/,#{s.rakefile_file}'",
       ]
     end
@@ -39,10 +40,11 @@ module Burke
     
     desc "Run RSpec code examples and verify RCov percentage"
     RSpec::Core::RakeTask.new('spec:rcov:verify') do |t|
+      require 'shellwords'
       t.rcov = true
       t.rcov_opts = [
         '--failure-threshold', s.rspec.rcov.failure_threshold,
-        '-Ilib',
+        "-I#{%w[lib spec].map {|e| File.expand_path(e).shellescape }.join ':'}",
         '--exclude', "'spec/,#{s.rakefile_file}'",
         '--no-html'
       ]
