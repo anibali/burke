@@ -50,7 +50,18 @@ module Burke
           new_version = Gem::Version.new(segments.join('.'))
         end
         
-        puts "Would you like the history file (changelog) to be updated? [Y]es, [N]o"
+        case settings.docs.markup
+        when 'rdoc'
+          settings.docs.history_file ||= "History.rdoc"
+        when 'markdown'
+          settings.docs.history_file ||= "History.md"
+        when 'textile'
+          settings.docs.history_file ||= "History.textile"
+        else
+          settings.docs.history_file ||= "History.txt"
+        end
+        
+        puts "Would you like the history file '#{settings.docs.history_file}' to be updated? [Y]es, [N]o"
         update_changelog = nil
         until %w[y n yes no].include? update_changelog
           print "> "
@@ -62,7 +73,9 @@ module Burke
         puts "The VERSION file will be changed from containing '#{old_version}' "
         puts "to '#{new_version}'. The changes will be commited to the Git "
         puts "repository and tagged with 'v#{new_version}'."
-        puts "A new entry will be made in the history file (changelog)." if update_changelog
+        if update_changelog
+          puts "A new entry will be made in the history file '#{settings.docs.history_file}'."
+        end
         puts
         
         continue = nil
@@ -84,17 +97,14 @@ module Burke
             case settings.docs.markup
             when 'rdoc'
               str << "=== #{heading}\n\n"
-              str << messages.map {|m| "* " + m}.join("\n")
-              settings.docs.history_file ||= "History.rdoc"
             when 'markdown'
               str << "### #{heading}\n\n"
-              str << messages.map {|m| "* " + m}.join("\n")
-              settings.docs.history_file ||= "History.md"
+            when 'textile'
+              str << "h3. #{heading}\n\n"
             else
               str << "#{heading}\n\n"
-              str << messages.map {|m| "* " + m}.join("\n")
-              settings.docs.history_file ||= "History"
             end
+            str << messages.map {|m| "* " + m}.join("\n")
             
             old_log = File.read(settings.docs.history_file) rescue ""
             new_log = [str, old_log].join("\n\n")
