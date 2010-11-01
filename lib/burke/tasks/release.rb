@@ -87,7 +87,13 @@ module Burke
         
         if continue
           if update_changelog
-            messages = g.log.between("v#{old_version}", '.').map {|c| c.message}.uniq
+            log_entries = nil
+            begin
+              log_entries = g.log.between("v#{old_version}", '.').to_a
+            rescue
+              log_entries = g.log.to_a
+            end
+            messages = log_entries.map {|c| c.message}.uniq
             str = ""
             time = Time.now
             date_str = "%.4d-%.2d-%.2d" % [time.year, time.month, time.day]
