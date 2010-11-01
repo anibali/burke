@@ -2,11 +2,8 @@ module Burke
   Settings.field(:rspec) { self.rspec = RSpecSettings.new }
   
   define_task 'spec' do |s|
-    begin
-      require 'rspec/core/rake_task'
-    rescue LoadError
-      raise "'rspec' gem is not available"
-    end
+    gem 'rspec-core', '~> 2'
+    require 'rspec/core/rake_task'
     
     RSpec::Core::RakeTask.new 'spec' do |t|
       build_spec_task t, s.rspec
@@ -14,11 +11,9 @@ module Burke
   end
   
   define_task 'spec:rcov' do |s|
-    begin
-      require 'rspec/core/rake_task'
-    rescue LoadError
-      raise "'rspec' gem is not available"
-    end
+    gem 'rcov'
+    gem 'rspec-core', '~> 2'
+    require 'rspec/core/rake_task'
     
     desc "Run RSpec code examples and generate full RCov report"
     RSpec::Core::RakeTask.new('spec:rcov') do |t|
@@ -32,11 +27,9 @@ module Burke
   end
   
   define_task 'spec:rcov:verify' do |s|
-    begin
-      require 'rspec/core/rake_task'
-    rescue LoadError
-      raise "'rspec' gem is not available"
-    end
+    gem 'rcov'
+    gem 'rspec-core', '~> 2'
+    require 'rspec/core/rake_task'
     
     desc "Run RSpec code examples and verify RCov percentage"
     RSpec::Core::RakeTask.new('spec:rcov:verify') do |t|

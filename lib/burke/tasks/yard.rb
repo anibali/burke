@@ -1,10 +1,7 @@
 module Burke
   define_task 'yard' do |s|
-    begin
-      require 'yard'
-    rescue LoadError
-      raise "'yard' gem is not available"
-    end
+    gem 'yard'
+    require 'yard'
     
     opts = []
     d = s.docs

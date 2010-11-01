@@ -1,10 +1,8 @@
 module Burke
   define_task 'release' do |s|
-    begin
-      require 'git'
-    rescue LoadError
-      raise "'git' gem is not available"
-    end
+    gem 'git'
+    require 'git'
+    
     if s.key? 'version'
       raise "version is managed in an unknown way"
     end
