@@ -116,9 +116,9 @@ module Burke
     field(:version) { File.read(version_file).strip.freeze if version_file }
     
     field :files do
-      fs = Dir['{lib,spec,bin}/**/*']
+      fs = Dir['{lib,spec,bin,test}/**/*']
       fs << docs.readme_file
-      fs << docs.license_file
+      fs.concat docs.extra_files
       fs << version_file
       fs << rakefile_file
       fs.compact.freeze

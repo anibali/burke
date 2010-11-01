@@ -49,13 +49,49 @@ module Burke
           new_version = Gem::Version.new(segments.join('.'))
         end
         
-        print "The VERSION file will be changed from containing '#{old_version}' "
-        print "to '#{new_version}'. The changes will be commited to the Git "
-        print "repository and tagged with 'v#{new_version}'."
+        puts "Would you like the history file (changelog) to be updated? [Y]es, [N]o"
+        update_changelog = nil
+        until %w[y n yes no].include? update_changelog
+          print "> "
+          update_changelog = $stdin.gets.strip.downcase
+          puts
+        end
+        
+        if %w[yes y].include? update_changelog
+          messages = g.log.between("v#{old_version}", '.').map {|c| c.message}.uniq
+          str = ""
+          time = Time.now
+          date_str = "%.4d-%.2d-%.2d" % [time.year, time.month, time.day]
+          heading = "Version #{new_version} / #{date_str}"
+          case settings.docs.markup
+          when 'rdoc'
+            str << "=== #{heading}\n\n"
+            str << messages.map {|m| "* " + m}.join("\n")
+            settings.docs.history_file ||= "History.rdoc"
+          when 'markdown'
+            str << "### #{heading}\n\n"
+            str << messages.map {|m| "* " + m}.join("\n")
+            settings.docs.history_file ||= "History.md"
+          else
+            str << "#{heading}\n\n"
+            str << messages.map {|m| "* " + m}.join("\n")
+            settings.docs.history_file ||= "History"
+          end
+          
+          old_log = File.read(settings.docs.history_file) rescue ""
+          new_log = [str, old_log].join("\n\n")
+          open(settings.docs.history_file, 'w') do |f|
+            f.write new_log
+          end
+        end
+        
+        puts "The VERSION file will be changed from containing '#{old_version}' "
+        puts "to '#{new_version}'. The changes will be commited to the Git "
+        puts "repository and tagged with 'v#{new_version}'."
         puts
         
         continue = nil
-        until ['y', 'n', 'yes', 'no'].include? continue
+        until %w[y n yes no].include? continue
           puts "Continue? [Y]es, [N]o"
           print "> "
           continue = $stdin.gets.strip.downcase

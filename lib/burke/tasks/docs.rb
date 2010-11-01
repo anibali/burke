@@ -14,7 +14,7 @@ module Burke
     end
     
     field 'extra_files' do
-      [license_file].compact.freeze
+      [license_file history_file].compact.freeze
     end
     
     field 'readme_file' do
@@ -23,6 +23,10 @@ module Burke
     
     field 'license_file' do
       find_file('{licen{c,s}e,copying}{.*,}').freeze
+    end
+    
+    field 'history_file' do
+      find_file('{history,changelog}{.*,}').freeze
     end
     
     field 'markup' do
