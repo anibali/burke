@@ -8,6 +8,7 @@ module Burke
     if s.key? 'version'
       raise "version is managed in an unknown way"
     end
+    
     desc 'Release a new version of this project'
     task 'release' do |t|
       g = Git.open '.'
@@ -56,38 +57,12 @@ module Burke
           update_changelog = $stdin.gets.strip.downcase
           puts
         end
-        
-        if %w[yes y].include? update_changelog
-          messages = g.log.between("v#{old_version}", '.').map {|c| c.message}.uniq
-          str = ""
-          time = Time.now
-          date_str = "%.4d-%.2d-%.2d" % [time.year, time.month, time.day]
-          heading = "Version #{new_version} / #{date_str}"
-          case settings.docs.markup
-          when 'rdoc'
-            str << "=== #{heading}\n\n"
-            str << messages.map {|m| "* " + m}.join("\n")
-            settings.docs.history_file ||= "History.rdoc"
-          when 'markdown'
-            str << "### #{heading}\n\n"
-            str << messages.map {|m| "* " + m}.join("\n")
-            settings.docs.history_file ||= "History.md"
-          else
-            str << "#{heading}\n\n"
-            str << messages.map {|m| "* " + m}.join("\n")
-            settings.docs.history_file ||= "History"
-          end
-          
-          old_log = File.read(settings.docs.history_file) rescue ""
-          new_log = [str, old_log].join("\n\n")
-          open(settings.docs.history_file, 'w') do |f|
-            f.write new_log
-          end
-        end
+        update_changelog = %w[yes y].include? update_changelog
         
         puts "The VERSION file will be changed from containing '#{old_version}' "
         puts "to '#{new_version}'. The changes will be commited to the Git "
         puts "repository and tagged with 'v#{new_version}'."
+        puts "A new entry will be made in the history file (changelog)." if update_changelog
         puts
         
         continue = nil
@@ -97,8 +72,37 @@ module Burke
           continue = $stdin.gets.strip.downcase
           puts
         end
+        continue = %w[yes y].include? continue
         
-        if %w[yes y].include? continue
+        if continue
+          if update_changelog
+            messages = g.log.between("v#{old_version}", '.').map {|c| c.message}.uniq
+            str = ""
+            time = Time.now
+            date_str = "%.4d-%.2d-%.2d" % [time.year, time.month, time.day]
+            heading = "Version #{new_version} / #{date_str}"
+            case settings.docs.markup
+            when 'rdoc'
+              str << "=== #{heading}\n\n"
+              str << messages.map {|m| "* " + m}.join("\n")
+              settings.docs.history_file ||= "History.rdoc"
+            when 'markdown'
+              str << "### #{heading}\n\n"
+              str << messages.map {|m| "* " + m}.join("\n")
+              settings.docs.history_file ||= "History.md"
+            else
+              str << "#{heading}\n\n"
+              str << messages.map {|m| "* " + m}.join("\n")
+              settings.docs.history_file ||= "History"
+            end
+            
+            old_log = File.read(settings.docs.history_file) rescue ""
+            new_log = [str, old_log].join("\n\n")
+            open(settings.docs.history_file, 'w') do |f|
+              f.write new_log
+            end
+          end
+          
           open 'VERSION', 'w' do |f|
             f.puts new_version.to_s
           end
