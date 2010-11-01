@@ -14,7 +14,7 @@ module Burke
     end
     
     field 'extra_files' do
-      [license_file history_file].compact.freeze
+      [license_file, history_file].compact.freeze
     end
     
     field 'readme_file' do
