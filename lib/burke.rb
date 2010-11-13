@@ -176,7 +176,7 @@ module Burke
             td.execute(settings)
             enabled << [name, nil]
           rescue Exception => ex
-            disabled << [name, ex.message]
+            disabled << [name, ex.message.strip]
           end
         else
           disabled << [name, "disabled by project developer(s)"]
@@ -190,9 +190,8 @@ module Burke
           puts '  Enabled '
           puts ' ---------'
           width = enabled.map {|a| a[0].length}.sort.last
-          enabled.sort_by {|a| a[0]}.each do |name, reason|
+          enabled.sort_by {|a| a[0]}.each do |name, _|
             line = "+ #{name.ljust(width)}"
-            line << " (#{reason})" if reason
             puts line
           end
           puts
