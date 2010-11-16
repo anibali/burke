@@ -113,7 +113,7 @@ module Burke
     field(:rakefile_file) { find_file('rakefile').freeze }
     field(:version_file) { find_file('version{.*,}').freeze }
     
-    field(:version) { File.read(version_file).strip if version_file }
+    field(:version) { File.read(version_file).strip.freeze if version_file }
     
     field :files do
       fs = Dir['{lib,spec,bin,test}/**/*']
@@ -221,13 +221,16 @@ module Burke
         @base_gemspec = Gem::Specification.new
         
         attrs = Gem::Specification.attribute_names
-        attrs -= [:dependencies, :development_dependencies]
+        attrs -= [:dependencies, :development_dependencies, :version]
         attrs += [:author]
         
         attrs.each do |attr|
           value = settings.send(attr)
           @base_gemspec.send("#{attr}=", value) if value
         end
+        
+        # RubyGems doesn't like frozen version strings, so duplicate it.
+        @base_gemspec.version = settings.version.dup
         
         settings.dependencies.each do |gem, requirements|
           @base_gemspec.add_dependency gem.to_s, *requirements
