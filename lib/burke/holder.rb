@@ -143,7 +143,7 @@ module Burke
         end
       when '='
         if field_exists? key
-          self[key] = *args
+          self[key] = args[0]
         else
           super
         end
@@ -160,7 +160,7 @@ module Burke
             end
             v
           else
-            self[key] = *args
+            self[key] = args[0]
           end
         else
           super

@@ -113,7 +113,7 @@ module Burke
     field(:rakefile_file) { find_file('rakefile').freeze }
     field(:version_file) { find_file('version{.*,}').freeze }
     
-    field(:version) { File.read(version_file).strip.freeze if version_file }
+    field(:version) { File.read(version_file).strip if version_file }
     
     field :files do
       fs = Dir['{lib,spec,bin,test}/**/*']
