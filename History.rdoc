@@ -1,0 +1,12 @@
+=== Version 0.3.6 / 2010-11-17
+
+* Fixed Ruby 1.9 issues
+* Stripped whitespace from burke:tasks disabled reasons
+* Handled case where tag for previous version does not exist
+* Fixed typo
+* Changed to 'gem' method for verifying task dependencies
+* Made release task more informative
+* Made the relationship between release task operations and questions more logical
+* Added automatic history file building to release task
+* Restructured specs, fixed up rcov integration
+
