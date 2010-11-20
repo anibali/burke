@@ -3,7 +3,7 @@ module Burke
   
   define_task 'test' do |s|
     if @settings.test.files.empty?
-      raise "project doesn't seem have any test files"
+      raise "project does not appear to have any test files"
     end
     require 'rake/testtask'
     Rake::TestTask.new do |t|

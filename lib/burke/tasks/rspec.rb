@@ -11,12 +11,13 @@ module Burke
   end
   
   define_task 'spec:rcov' do |s|
-    gem 'rcov'
     gem 'rspec-core', '~> 2'
+    gem 'rcov'
     require 'rspec/core/rake_task'
     
     desc "Run RSpec code examples and generate full RCov report"
     RSpec::Core::RakeTask.new('spec:rcov') do |t|
+      build_spec_task t, s.rspec
       require 'shellwords'
       t.rcov = true
       t.rcov_opts = [
@@ -27,12 +28,13 @@ module Burke
   end
   
   define_task 'spec:rcov:verify' do |s|
-    gem 'rcov'
     gem 'rspec-core', '~> 2'
+    gem 'rcov'
     require 'rspec/core/rake_task'
     
     desc "Run RSpec code examples and verify RCov percentage"
     RSpec::Core::RakeTask.new('spec:rcov:verify') do |t|
+      build_spec_task t, s.rspec
       require 'shellwords'
       t.rcov = true
       t.rcov_opts = [
@@ -47,6 +49,12 @@ module Burke
   def self.build_spec_task task, rspec_settings
     t = task
     r = rspec_settings
+    
+    if Dir.glob(r.pattern).empty?
+      raise "project does not appear to have any RSpec examples"
+    end
+    
+    t.pattern = r.pattern
     t.ruby_opts = r.ruby_opts if r.ruby_opts
   end
   
@@ -60,6 +68,8 @@ module Burke
     
     field 'ruby_opts'
     field('rcov') { self.rcov = RCovSettings.new }
+    
+    field('pattern') { "spec/**/*_spec.rb" }
     
     private
     def find_file pattern
