@@ -230,7 +230,7 @@ module Burke
         end
         
         # RubyGems doesn't like frozen version strings, so duplicate it.
-        @base_gemspec.version = settings.version.dup
+        @base_gemspec.version = settings.version.dup unless settings.version.nil?
         
         settings.dependencies.each do |gem, requirements|
           @base_gemspec.add_dependency gem.to_s, *requirements
