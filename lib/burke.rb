@@ -110,7 +110,7 @@ module Burke
       dev_deps
     end
     
-    field(:rakefile_file) { find_file('rakefile').freeze }
+    field(:rakefile_file) { find_file('rakefile{.rb,}').freeze }
     field(:version_file) { find_file('version{.*,}').freeze }
     
     field(:version) { File.read(version_file).strip.freeze if version_file }
